@@ -17,15 +17,18 @@ package org.gridgain.examples.datagrid.model;
 import org.gridgain.grid.cache.query.*;
 
 import java.io.*;
-import java.util.*;
+import java.util.concurrent.atomic.*;
 
 /**
  * Organization class.
  */
 public class Organization implements Serializable {
+    /** ID generator. */
+    private static final AtomicLong IDGEN = new AtomicLong(System.currentTimeMillis());
+
     /** Organization ID (indexed). */
     @GridCacheQuerySqlField(index = true)
-    private UUID id;
+    private long id;
 
     /** Organization name (indexed). */
     @GridCacheQuerySqlField(index = true)
@@ -37,16 +40,25 @@ public class Organization implements Serializable {
      * @param name Organization name.
      */
     public Organization(String name) {
-        id = UUID.randomUUID();
+        id = IDGEN.incrementAndGet();
 
         this.name = name;
     }
 
-    /**
-     * @return Organization ID.
-     */
-    public UUID id() {
+    public long getId() {
         return id;
+    }
+
+    public void setId(long id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 
     /** {@inheritDoc} */

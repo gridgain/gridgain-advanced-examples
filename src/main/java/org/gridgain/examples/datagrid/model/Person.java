@@ -18,19 +18,22 @@ import org.gridgain.grid.cache.affinity.*;
 import org.gridgain.grid.cache.query.*;
 
 import java.io.*;
-import java.util.*;
+import java.util.concurrent.atomic.*;
 
 /**
  * Person class.
  */
 public class Person implements Serializable {
+    /** ID generator. */
+    private static final AtomicLong IDGEN = new AtomicLong(System.currentTimeMillis());
+
     /** Person ID (indexed). */
     @GridCacheQuerySqlField(index = true)
-    private UUID id;
+    private long id;
 
     /** Organization ID (indexed). */
     @GridCacheQuerySqlField(index = true)
-    private UUID orgId;
+    private long orgId;
 
     /** First name (not-indexed). */
     @GridCacheQuerySqlField
@@ -49,7 +52,7 @@ public class Person implements Serializable {
     private double salary;
 
     /** Custom cache key to guarantee that person is always collocated with its organization. */
-    private transient GridCacheAffinityKey<UUID> key;
+    private transient GridCacheAffinityKey<Long> key;
 
     /**
      * Constructs person record.
@@ -62,9 +65,7 @@ public class Person implements Serializable {
      */
     Person(Organization org, String firstName, String lastName, double salary, String resume) {
         // Generate unique ID for this person.
-        id = UUID.randomUUID();
-
-        orgId = org.id();
+        id = IDGEN.incrementAndGet();
 
         this.firstName = firstName;
         this.lastName = lastName;
@@ -78,11 +79,59 @@ public class Person implements Serializable {
      *
      * @return Custom affinity key to guarantee that person is always collocated with organization.
      */
-    public GridCacheAffinityKey<UUID> key() {
+    public GridCacheAffinityKey<Long> key() {
         if (key == null)
             key = new GridCacheAffinityKey<>(id, orgId);
 
         return key;
+    }
+
+    public long getId() {
+        return id;
+    }
+
+    public void setId(long id) {
+        this.id = id;
+    }
+
+    public long getOrgId() {
+        return orgId;
+    }
+
+    public void setOrgId(long orgId) {
+        this.orgId = orgId;
+    }
+
+    public String getFirstName() {
+        return firstName;
+    }
+
+    public void setFirstName(String firstName) {
+        this.firstName = firstName;
+    }
+
+    public String getLastName() {
+        return lastName;
+    }
+
+    public void setLastName(String lastName) {
+        this.lastName = lastName;
+    }
+
+    public String getResume() {
+        return resume;
+    }
+
+    public void setResume(String resume) {
+        this.resume = resume;
+    }
+
+    public double getSalary() {
+        return salary;
+    }
+
+    public void setSalary(double salary) {
+        this.salary = salary;
     }
 
     /** {@inheritDoc} */
