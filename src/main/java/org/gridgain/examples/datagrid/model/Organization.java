@@ -12,7 +12,7 @@
  *    limitations under the License.
  */
 
-package org.gridgain.examples.data;
+package org.gridgain.examples.datagrid.model;
 
 import org.gridgain.grid.cache.query.*;
 
