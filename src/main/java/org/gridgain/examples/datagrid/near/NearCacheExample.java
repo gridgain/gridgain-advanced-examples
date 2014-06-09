@@ -42,9 +42,9 @@ public class NearCacheExample {
                 int key = -1;
 
                 for (int i = 0; i < 1000; i++) {
-                    GridNode n = g.mapKeyToNode(CACHE_NAME, i);
+                    GridCacheEntry<Object, Object> entry = g.cache(CACHE_NAME).entry(i);
 
-                    if (!g.localNode().equals(n)) {
+                    if (!entry.backup() && !entry.primary()) {
                         key = i;
 
                         break;
@@ -56,6 +56,8 @@ public class NearCacheExample {
 
                 if (g.cache(CACHE_NAME).get(key) != null)
                     throw new Exception("Key should not be in cache: " + key);
+
+                System.out.println("Key belonging to remote node: " + key);
 
                 final int key0 = key;
 
@@ -87,7 +89,7 @@ public class NearCacheExample {
                     @Override public Object call() throws Exception {
                         System.out.println("Updating example key on node: " + g.localNode().id());
 
-                        return g0.cache(CACHE_NAME).flagsOn(GridCacheFlag.SYNC_COMMIT).putx(key0, 15);
+                        return g0.cache(CACHE_NAME).putx(key0, 15);
                     }
                 }).get();
 
