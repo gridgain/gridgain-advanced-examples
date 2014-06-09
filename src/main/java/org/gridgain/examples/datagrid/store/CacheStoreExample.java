@@ -33,7 +33,7 @@ public class CacheStoreExample {
      */
     public static void main(String[] args) throws GridException {
         // Disable quite logging.
-        System.setProperty("GRIDGAIN_QUITE", "false");
+        System.setProperty("GRIDGAIN_QUIET", "false");
 
         testStore(false);
         testStore(true);
@@ -63,6 +63,8 @@ public class CacheStoreExample {
         try (Grid g = GridGain.start(c)) {
             GridCache<Long, Employee> cache = g.cache("test");
 
+            GridLogger log = g.log().getLogger(CacheStoreExample.class);
+
             int cnt = 10;
 
             for (long i = 1; i <= cnt; i++)
@@ -72,14 +74,14 @@ public class CacheStoreExample {
             for (long i = 1; i <= cnt; i+= 2) {
                 cache.evict(i);
 
-                log(null, "Evicted key: + " + i);
+                log(log, "Evicted key: " + i);
             }
 
             for (long i = 1; i <= cnt; i++)
-                log(null, "Peeked at [key=" + i + ", val=" + cache.peek(i) + ']');
+                log(log, "Peeked at [key=" + i + ", val=" + cache.peek(i) + ']');
 
             for (long i = 1; i <= cnt; i++)
-                log(null, "Got [key=" + i + ", val=" + cache.get(i) + ']');
+                log(log, "Got [key=" + i + ", val=" + cache.get(i) + ']');
         }
     }
 
