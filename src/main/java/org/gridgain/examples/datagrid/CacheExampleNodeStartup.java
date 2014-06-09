@@ -12,7 +12,7 @@
  *    limitations under the License.
  */
 
-package org.gridgain.examples.datagrid.near;
+package org.gridgain.examples.datagrid;
 
 import org.gridgain.grid.*;
 
@@ -21,7 +21,7 @@ import javax.swing.*;
 /**
  *
  */
-public class NearCacheExampleNodeStartup {
+public class CacheExampleNodeStartup {
     /**
      * @param args Command line arguments, none required.
      * @throws GridException If example execution failed.
