@@ -17,7 +17,6 @@ package org.gridgain.examples.datagrid.eviction;
 import org.gridgain.grid.*;
 import org.gridgain.grid.cache.*;
 import org.gridgain.grid.cache.eviction.*;
-import org.gridgain.grid.cache.query.*;
 import org.gridgain.grid.logger.*;
 import org.gridgain.grid.resources.*;
 
@@ -74,7 +73,6 @@ public class CustomEvictionPolicyExample {
         GridCacheConfiguration cc = new GridCacheConfiguration();
 
         cc.setEvictionPolicy(new EvictionPolicy());
-        cc.setQueryIndexEnabled(true);
 
         c.setCacheConfiguration(cc);
 
@@ -153,7 +151,6 @@ public class CustomEvictionPolicyExample {
      */
     public static class Employee {
         /** */
-        @GridCacheQuerySqlField(index = true)
         private final int prio;
 
         /**
