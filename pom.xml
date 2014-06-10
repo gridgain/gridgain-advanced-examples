@@ -32,6 +32,14 @@
         <morphia.version>RELEASE</morphia.version>
     </properties>
 
+    <!-- Uncomment and change artifactId to gridgain-platform-ent to switch to enterprise edition -->
+    <!--<repositories>-->
+        <!--<repository>-->
+            <!--<id>GridGain External Repository</id>-->
+            <!--<url>http://www.gridgainsystems.com:8085/nexus/content/repositories/external</url>-->
+        <!--</repository>-->
+    <!--</repositories>-->
+
     <dependencies>
         <dependency>
             <groupId>org.gridgain</groupId>
