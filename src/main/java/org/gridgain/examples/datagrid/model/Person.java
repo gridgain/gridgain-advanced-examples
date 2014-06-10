@@ -63,7 +63,7 @@ public class Person implements Serializable {
      * @param salary Salary.
      * @param resume Resume text.
      */
-    Person(Organization org, String firstName, String lastName, double salary, String resume) {
+    public Person(Organization org, String firstName, String lastName, double salary, String resume) {
         // Generate unique ID for this person.
         id = IDGEN.incrementAndGet();
 
