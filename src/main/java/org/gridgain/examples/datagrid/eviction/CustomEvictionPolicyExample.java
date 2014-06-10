@@ -21,8 +21,10 @@ import org.gridgain.grid.cache.query.*;
 import org.gridgain.grid.logger.*;
 import org.gridgain.grid.resources.*;
 
-import java.util.*;
 import java.util.Map.*;
+import java.util.*;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.*;
 
 /**
  * This example shows:
@@ -46,13 +48,15 @@ public class CustomEvictionPolicyExample {
         try (Grid g = GridGain.start(configuration())) {
             Random r = new Random();
 
-            for (int i = 0; i < MAX_SIZE * 2; i++) {
+            for (int i = 0; i < MAX_SIZE * 3; i++) {
                 Employee e = new Employee(r.nextInt(20));
 
                 System.out.println("Putting: " + e);
 
                 g.cache(null).putx(i, e);
             }
+
+            System.out.println("Employees in cache:");
 
             for (Employee e : g.<Integer, Employee>cache(null).values())
                 System.out.println(e);
@@ -82,6 +86,9 @@ public class CustomEvictionPolicyExample {
      */
     public static class EvictionPolicy implements GridCacheEvictionPolicy<Integer, Employee> {
         /** */
+        private static final String META = "evict-plc-META";
+
+        /** */
         @GridInstanceResource
         private Grid g;
 
@@ -89,34 +96,53 @@ public class CustomEvictionPolicyExample {
         @GridLoggerResource
         private GridLogger log;
 
+        /** */
+        private final ConcurrentNavigableMap<PolicyKey, GridCacheEntry<Integer, Employee>> map =
+            new ConcurrentSkipListMap<>();
+
+        /** */
+        private final AtomicLong seedGen = new AtomicLong();
+
         /** {@inheritDoc} */
-        @Override public void onEntryAccessed(boolean b, GridCacheEntry<Integer, Employee> e) {
-            int cnt = g.cache(null).size() - MAX_SIZE;
+        @Override public void onEntryAccessed(boolean rmv, GridCacheEntry<Integer, Employee> e) {
+            if (rmv) {
+                PolicyKey key = e.meta(META);
 
-            if (!b && cnt > 0) {
-                GridCache<Integer, Employee> cache = g.cache(null);
+                if (key != null)
+                    map.remove(key, e);
+            }
+            else {
+                Employee employee = e.peek();
 
-                GridCacheQuery<Entry<Integer, Employee>> q =
-                    cache.queries().createSqlQuery(
-                        Employee.class,
-                        "from Employee order by Employee.prio asc limit ?");
+                if (employee == null)
+                    return;
 
-                q.projection(g.forLocal());
+                PolicyKey key = new PolicyKey(employee.priority(), seedGen.incrementAndGet());
 
-                try {
-                    Collection<Entry<Integer, Employee>> entries = q.execute(cnt).get();
+                map.putIfAbsent(key, e);
 
-                    for (Entry<Integer, Employee> e0 : entries) {
-                        boolean res = cache.entry(e0.getKey()).evict();
+                if (e.putMetaIfAbsent(META, key) != null || !e.isCached()) {
+                    map.remove(key, e);
 
-                        System.out.println((res ? "Evicted: " : "Failed to evict: ") + e0.getValue());
+                    return;
+                }
 
-                        if (cache.size() < MAX_SIZE)
+                // Map size has been increased. Need to check if evictions needed.
+                int cnt = map.size() - MAX_SIZE;
+
+                if (cnt > 0) {
+                    for (Entry<PolicyKey, GridCacheEntry<Integer, Employee>> e0 : map.entrySet()) {
+                        if (e0.getValue().evict()) {
+                            map.remove(e0.getKey(), e0.getValue());
+
+                            System.out.println("Evicted employee with prio: " + e0.getKey().prio);
+                        }
+
+                        cnt = map.size() - MAX_SIZE;
+
+                        if (cnt <= 0)
                             return;
                     }
-                }
-                catch (GridException e1) {
-                    log.error("Failed to execute query.", e1);
                 }
             }
         }
@@ -147,6 +173,33 @@ public class CustomEvictionPolicyExample {
         /** {@inheritDoc} */
         @Override public String toString() {
             return "Employee [prio=" + prio + ']';
+        }
+    }
+
+    /**
+     *
+     */
+    private static class PolicyKey implements Comparable<PolicyKey> {
+        /** */
+        private final int prio;
+
+        /** */
+        private final long seed;
+
+        /**
+         * @param prio Priority.
+         * @param seed Seed.
+         */
+        private PolicyKey(int prio, long seed) {
+            this.prio = prio;
+            this.seed = seed;
+        }
+
+        /** {@inheritDoc} */
+        @Override public int compareTo(PolicyKey o) {
+            return prio < o.prio ? -1 :
+                prio > o.prio ? 1 :
+                    seed < o.seed ? -1 : seed == o.seed ? 0 : 1;
         }
     }
 }
