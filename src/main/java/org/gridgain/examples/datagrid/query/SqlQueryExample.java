@@ -21,8 +21,11 @@ import java.util.*;
  * This example shows SQL query usage.
  */
 public class SqlQueryExample {
-    /** Cache name. */
-    private static final String CACHE_NAME = "partitioned";
+    /** Partitioned cache name. */
+    private static final String PARTITIONED_CACHE_NAME = "partitioned";
+
+    /** Partitioned cache name. */
+    private static final String REPLICATED_CACHE_NAME = "replicated";
 
     /**
      * Executes example.
@@ -64,11 +67,11 @@ public class SqlQueryExample {
      * @throws GridException In case of error.
      */
     private static void sqlQuery() throws GridException {
-        GridCache<GridCacheAffinityKey<UUID>, Person> cache = GridGain.grid().cache(CACHE_NAME);
+        GridCache<GridCacheAffinityKey<UUID>, Person> cache = GridGain.grid().cache(PARTITIONED_CACHE_NAME);
 
         // Create query which selects salaries based on range.
         GridCacheQuery<Map.Entry<GridCacheAffinityKey<UUID>, Person>> qry =
-            cache.queries().createSqlQuery(Person.class, "salary > ? and salary <= ?");
+            cache.queries().createSqlQuery(Person.class, "salary > ? and salary <= ?").enableDedup(true);
 
         // Execute queries for salary ranges.
         print("People with salaries between 0 and 1000: ", qry.execute(0, 1000).get());
@@ -84,13 +87,13 @@ public class SqlQueryExample {
      * @throws GridException In case of error.
      */
     private static void sqlQueryWithJoin() throws GridException {
-        GridCache<GridCacheAffinityKey<UUID>, Person> cache = GridGain.grid().cache(CACHE_NAME);
+        GridCache<GridCacheAffinityKey<UUID>, Person> cache = GridGain.grid().cache(PARTITIONED_CACHE_NAME);
 
         // Create query which joins on 2 types to select people for a specific organization.
         GridCacheQuery<Map.Entry<GridCacheAffinityKey<UUID>, Person>> qry =
-            cache.queries().createSqlQuery(Person.class, "from Person, Organization " +
+            cache.queries().createSqlQuery(Person.class, "from \"partitioned\".Person, \"replicated\".Organization " +
                 "where Person.orgId = Organization.id " +
-                "and lower(Organization.name) = lower(?)");
+                "and lower(Organization.name) = lower(?)").enableDedup(true);
 
         // Execute queries for find employees for different organizations.
         print("Following people are 'GridGain' employees: ", qry.execute("GridGain").get());
@@ -104,11 +107,11 @@ public class SqlQueryExample {
      * @throws GridException In case of error.
      */
     private static void sqlFieldsQuery() throws GridException {
-        GridCache<?, ?> cache = GridGain.grid().cache(CACHE_NAME);
+        GridCache<?, ?> cache = GridGain.grid().cache(PARTITIONED_CACHE_NAME);
 
         // Create query to get names of all employees.
         GridCacheQuery<List<?>> qry1 = cache.queries().createSqlFieldsQuery(
-            "select concat(firstName, ' ', lastName) from Person");
+            "select concat(firstName, ' ', lastName) from Person").enableDedup(true);
 
         // Execute query to get collection of rows. In this particular
         // case each row will have one element with full name of an employees.
@@ -125,12 +128,12 @@ public class SqlQueryExample {
      * @throws GridException In case of error.
      */
     private static void sqlFieldsQueryWithJoin() throws GridException {
-        GridCache<?, ?> cache = GridGain.grid().cache(CACHE_NAME);
+        GridCache<?, ?> cache = GridGain.grid().cache(PARTITIONED_CACHE_NAME);
 
         // Create query to get names of all employees.
         GridCacheQuery<List<?>> qry1 = cache.queries().createSqlFieldsQuery(
-            "select concat(firstName, ' ', lastName), Organization.name from Person, Organization where " +
-                "Person.orgId = Organization.id");
+            "select concat(firstName, ' ', lastName), Organization.name from \"partitioned\".Person, " +
+                "\"replicated\".Organization where Person.orgId = Organization.id").enableDedup(true);
 
         // Execute query to get collection of rows. In this particular
         // case each row will have one element with full name of an employees.
@@ -147,7 +150,7 @@ public class SqlQueryExample {
      * @throws GridException In case of error.
      */
     private static void aggregateQuery() throws GridException {
-        GridCache<?, ?> cache = GridGain.grid().cache(CACHE_NAME);
+        GridCache<?, ?> cache = GridGain.grid().cache(PARTITIONED_CACHE_NAME);
 
         // Create query to get sum of salaries and number of summed rows.
         GridCacheQuery<List<?>> qry1 = cache.queries().createSqlFieldsQuery(
@@ -178,14 +181,11 @@ public class SqlQueryExample {
      * @throws InterruptedException In case of error.
      */
     private static void initialize() throws GridException, InterruptedException {
-        GridCache<?, ?> cache = GridGain.grid().cache(CACHE_NAME);
-
         // Organization projection.
-        GridCacheProjection<Long, Organization> orgCache = cache.projection(Long.class, Organization.class);
+        GridCacheProjection<Long, Organization> orgCache = GridGain.grid().cache(REPLICATED_CACHE_NAME);
 
         // Person projection.
-        GridCacheProjection<GridCacheAffinityKey<Long>, Person> personCache =
-            cache.projection(GridCacheAffinityKey.class, Person.class);
+        GridCacheProjection<Long, Person> personCache = GridGain.grid().cache(PARTITIONED_CACHE_NAME);
 
         // Organizations.
         Organization org1 = new Organization("GridGain");
@@ -202,10 +202,10 @@ public class SqlQueryExample {
 
         // Note that in this example we use custom affinity key for Person objects
         // to ensure that all persons are collocated with their organizations.
-        personCache.put(p1.key(), p1);
-        personCache.put(p2.key(), p2);
-        personCache.put(p3.key(), p3);
-        personCache.put(p4.key(), p4);
+        personCache.put(p1.getId(), p1);
+        personCache.put(p2.getId(), p2);
+        personCache.put(p3.getId(), p3);
+        personCache.put(p4.getId(), p4);
 
         // Wait 1 second to be sure that all nodes processed put requests.
         Thread.sleep(1000);

@@ -67,23 +67,11 @@ public class Person implements Serializable {
         // Generate unique ID for this person.
         id = IDGEN.incrementAndGet();
 
+        this.orgId = org.getId();
         this.firstName = firstName;
         this.lastName = lastName;
         this.resume = resume;
         this.salary = salary;
-    }
-
-    /**
-     * Gets cache affinity key. Since in some examples person needs to be collocated with organization, we create
-     * custom affinity key to guarantee this collocation.
-     *
-     * @return Custom affinity key to guarantee that person is always collocated with organization.
-     */
-    public GridCacheAffinityKey<Long> key() {
-        if (key == null)
-            key = new GridCacheAffinityKey<>(id, orgId);
-
-        return key;
     }
 
     public long getId() {
