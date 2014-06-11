@@ -102,7 +102,13 @@ public class EventsExample {
             @Override public boolean apply(GridCacheEvent evt) {
                 Integer key = evt.key();
 
-                return key != null && key % 2 == 0;
+                if (key != null && key % 2 == 0) {
+                    System.out.println("Filter passed for key: " + key);
+
+                    return true;
+                }
+
+                return false;
             }
         };
 
