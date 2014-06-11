@@ -17,8 +17,7 @@ package org.gridgain.examples.datagrid.eviction;
 import org.gridgain.grid.*;
 import org.gridgain.grid.cache.*;
 import org.gridgain.grid.cache.eviction.*;
-import org.gridgain.grid.logger.*;
-import org.gridgain.grid.resources.*;
+import org.jdk8.backport.*;
 
 import java.util.Map.*;
 import java.util.*;
@@ -83,22 +82,17 @@ public class CustomEvictionPolicyExample {
      *
      */
     public static class EvictionPolicy implements GridCacheEvictionPolicy<Integer, Employee> {
-        /** */
-        private static final String META = "evict-plc-META";
+        /** Meta key. */
+        private static final String META = "evict-plc-meta";
 
-        /** */
-        @GridInstanceResource
-        private Grid g;
+        /** Counter to avoid non-constant ConcurrentMap.size(). */
+        private final LongAdder mapSize = new LongAdder();
 
-        /** */
-        @GridLoggerResource
-        private GridLogger log;
-
-        /** */
+        /** Map to maintain employees in proper order. */
         private final ConcurrentNavigableMap<PolicyKey, GridCacheEntry<Integer, Employee>> map =
             new ConcurrentSkipListMap<>();
 
-        /** */
+        /** Seed generator to avoid collisions on same prio. */
         private final AtomicLong seedGen = new AtomicLong();
 
         /** {@inheritDoc} */
@@ -106,8 +100,8 @@ public class CustomEvictionPolicyExample {
             if (rmv) {
                 PolicyKey key = e.meta(META);
 
-                if (key != null)
-                    map.remove(key, e);
+                if (key != null && map.remove(key, e))
+                    mapSize.decrement();
             }
             else {
                 Employee employee = e.peek();
@@ -119,24 +113,27 @@ public class CustomEvictionPolicyExample {
 
                 map.putIfAbsent(key, e);
 
+                mapSize.increment();
+
                 if (e.putMetaIfAbsent(META, key) != null || !e.isCached()) {
-                    map.remove(key, e);
+                    if (map.remove(key, e))
+                        mapSize.decrement();
 
                     return;
                 }
 
                 // Map size has been increased. Need to check if evictions needed.
-                int cnt = map.size() - MAX_SIZE;
+                long cnt = mapSize.sum() - MAX_SIZE;
 
                 if (cnt > 0) {
                     for (Entry<PolicyKey, GridCacheEntry<Integer, Employee>> e0 : map.entrySet()) {
-                        if (e0.getValue().evict()) {
-                            map.remove(e0.getKey(), e0.getValue());
+                        if (e0.getValue().evict() && map.remove(e0.getKey(), e0.getValue())) {
+                            mapSize.decrement();
 
                             System.out.println("Evicted employee with prio: " + e0.getKey().prio);
                         }
 
-                        cnt = map.size() - MAX_SIZE;
+                        cnt = mapSize.sum() - MAX_SIZE;
 
                         if (cnt <= 0)
                             return;
