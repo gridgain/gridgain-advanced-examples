@@ -160,8 +160,11 @@ public class SqlQueryExample {
         long cnt = 0;
 
         for (List<?> row : res) {
-            sum += (Double)row.get(0);
-            cnt += (Long)row.get(1);
+            // Skip results from nodes without data.
+            if (row.get(0) != null) {
+                sum += (Double)row.get(0);
+                cnt += (Long)row.get(1);
+            }
         }
 
         // Print persons' names and organizations' names.
