@@ -67,7 +67,7 @@ public class EventsExample {
         };
 
         // Register event listener for all local task execution events.
-        g.events().localListen(lsnr, EVTS_CACHE);
+        g.events().localListen(lsnr, EVT_CACHE_OBJECT_PUT);
 
         // Generate cache events.
         for (int i = 0; i < 10; i++)
@@ -115,7 +115,7 @@ public class EventsExample {
         Grid g = GridGain.grid();
 
         // Register event listeners on all nodes to listen for task events.
-        GridFuture<UUID> fut = g.events().remoteListen(locLsnr, rmtLsnr, EVTS_CACHE);
+        GridFuture<UUID> fut = g.events().remoteListen(locLsnr, rmtLsnr, EVT_CACHE_OBJECT_PUT);
 
         // Wait until event listeners are subscribed on all nodes.
         UUID lsnrId = fut.get();
