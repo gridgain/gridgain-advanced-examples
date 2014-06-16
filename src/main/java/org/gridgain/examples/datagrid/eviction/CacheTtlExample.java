@@ -19,54 +19,63 @@
  *  \____/   /_/     /_/   \_,__/   \____/   \__,_/  /_/   /_/ /_/
  */
 
-package org.gridgain.examples.datagrid.dataload;
+package org.gridgain.examples.datagrid.eviction;
 
 import org.gridgain.grid.*;
-import org.gridgain.grid.dataload.*;
+import org.gridgain.grid.cache.*;
 
 /**
- * Demonstrates how cache can be populated with data utilizing {@link GridDataLoader} API.
+ * Demonstrates how to use cache TTL.
  */
-public class CacheDataLoaderExample {
+public class CacheTtlExample {
     /** Cache name. */
     private static final String CACHE_NAME = "partitioned";
-
-    /** Number of entries to load. */
-    private static final int ENTRY_COUNT = 500000;
 
     /**
      * Executes example.
      *
      * @param args Command line arguments, none required.
-     * @throws GridException If example execution failed.
+     * @throws Exception If example execution failed.
      */
     public static void main(String[] args) throws Exception {
         try (Grid g = GridGain.start("config/example-cache.xml")) {
             System.out.println();
-            System.out.println(">>> Cache data loader example started.");
+            System.out.println(">>> Cache TTL example started.");
 
-            try (GridDataLoader<Integer, String> ldr = g.dataLoader(CACHE_NAME)) {
-                // Configure loader.
-                ldr.perNodeBufferSize(1024);
+            final GridCache<Long, Long> cache = g.cache(CACHE_NAME);
 
-                long start = System.currentTimeMillis();
+            // Get empty cache entry.
+            GridCacheEntry<Long, Long> e = cache.entry(0L);
 
-                for (int i = 0; i < ENTRY_COUNT; i++) {
-                    ldr.addData(i, Integer.toString(i));
+            // Set time to live first.
+            e.timeToLive(1000);
 
-                    // Print out progress while loading cache.
-                    if (i > 0 && i % 10000 == 0)
-                        System.out.println("Loaded " + i + " keys.");
-                }
+            // Put value to cache.
+            e.set(0L);
 
-                long end = System.currentTimeMillis();
+            Long val = cache.get(0L);
 
-                System.out.println(">>> Loaded " + ENTRY_COUNT + " keys in " + (end - start) + "ms.");
-            }
+            if (val != 0L)
+                throw new Exception("Failed to get proper value from cache: " + val);
 
-            System.out.println(">>> Hit enter to stop the node.");
+            System.out.println("Waiting for entry to expire...");
 
-            System.in.read();
+            // Let entry expire.
+            Thread.sleep(2000);
+
+            // Get value via GridCacheEntry.
+            val = e.get();
+
+            if (val != null)
+                throw new Exception("Entry should have been evicted due to eager TTL eviction: " + val);
+
+            // Get value from cache.
+            val = cache.get(0L);
+
+            if (val != null)
+                throw new Exception("Entry should have been evicted due to eager TTL eviction: " + val);
+
+            System.out.println(">>> Cache TTL example finished.");
         }
     }
 }
