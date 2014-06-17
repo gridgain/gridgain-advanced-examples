@@ -57,7 +57,7 @@ public class WeightedAverageExample {
             // Calculate average weighted speed.
             GridCacheQuery<Entry<Long, Segment>> qry = c.queries().createSqlQuery(
                 Segment.class,
-                "speed > 80"); // Take only those segments where car was fast.
+                "speed > 80"); // Take only those segments where car was faster than 80 km/h.
 
             Collection<GridBiTuple<Double, Double>> res = qry.execute(
                 new GridReducer<Entry<Long, Segment>, GridBiTuple<Double, Double>>() {
@@ -67,6 +67,8 @@ public class WeightedAverageExample {
 
                     @Override public boolean collect(Entry<Long, Segment> e) {
                         Segment segment = e.getValue();
+
+                        System.out.println("Reducing entry: " + segment);
 
                         sumWeightedV += segment.getSpeed() * segment.getDuration();
 
@@ -105,12 +107,12 @@ public class WeightedAverageExample {
 
         GridCache<Long, Segment> c = GridGain.grid().cache(CACHE_NAME);
 
-        // Car has gone through 1000 segments.
-        for (long s = 0; s < 1000; s++) {
+        // Car went through 50 segments.
+        for (long s = 0; s < 50; s++) {
             c.put(s, new Segment(
                 s,
                 60 * (1 + r.nextDouble()),    // Speed cannot be less than 60 km/h
-                0.5 * (0.5 + r.nextDouble())) // Duration is 30 min and above.
+                0.5 + r.nextDouble())         // Duration is 30 min and above.
             );
         }
     }
@@ -160,6 +162,11 @@ public class WeightedAverageExample {
          */
         public double getDuration() {
             return duration;
+        }
+
+        /** {@inheritDoc} */
+        @Override public String toString() {
+            return "Segment [id=" + segmentId + ", speed=" + speed + ", duration=" + duration + ']';
         }
     }
 }
