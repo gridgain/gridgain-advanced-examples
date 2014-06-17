@@ -23,7 +23,7 @@ import static org.gridgain.grid.cache.GridCacheWriteSynchronizationMode.*;
 /**
  * Starts up an empty node with example cache configuration.
  */
-public class HibernateL2CacheExampleNodeStartup {
+public class JpaExampleNodeStartup {
     /**
      * Start up an empty node with specified cache configuration.
      *

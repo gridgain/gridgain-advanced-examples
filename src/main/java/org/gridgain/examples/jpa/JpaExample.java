@@ -22,7 +22,7 @@ import java.util.*;
 
 /**
  * This example demonstrates the use of GridGain In-Memory Data Grid as a Hibernate
- * Second-Level cache provider.
+ * Second-Level cache provider with JPA annotations.
  * <p>
  * The Hibernate Second-Level cache (or "L2 cache" shortly) lets you significantly
  * reduce the number of requests to the underlying SQL database. Because database
@@ -55,9 +55,9 @@ import java.util.*;
  * can experiment with other access types by modifying the Hibernate configuration file
  * {@code GRIDGAIN_HOME/examples/config/hibernate/example-hibernate-L2-cache.xml}, used by the example.
  * <p>
- * Remote nodes should always be started using {@link HibernateL2CacheExampleNodeStartup}
+ * Remote nodes should always be started using {@link JpaExampleNodeStartup}
  */
-public class HibernateL2CacheExample {
+public class JpaExample {
     /** JDBC URL for backing database (an H2 in-memory database is used). */
     private static final String JDBC_URL = "jdbc:h2:mem:example;DB_CLOSE_DELAY=-1";
 
@@ -77,7 +77,7 @@ public class HibernateL2CacheExample {
      */
     public static void main(String[] args) throws Exception {
         // Start the GridGain node, run the example, and stop the node when finished.
-        try (Grid grid = GridGain.start(HibernateL2CacheExampleNodeStartup.configuration())) {
+        try (Grid grid = GridGain.start(JpaExampleNodeStartup.configuration())) {
             // We use a single session factory, but create a dedicated session
             // for each transaction or query. This way we ensure that L1 cache
             // is not used (L1 cache has per-session scope only).
