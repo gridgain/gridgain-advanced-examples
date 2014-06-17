@@ -21,11 +21,16 @@
 
 package org.gridgain.examples.datagrid.dataload;
 
+import org.gridgain.examples.datagrid.*;
 import org.gridgain.grid.*;
 import org.gridgain.grid.dataload.*;
 
 /**
  * Demonstrates how cache can be populated with data utilizing {@link GridDataLoader} API.
+ * <p>
+ * Remote nodes should always be started with special configuration file which
+ * enables P2P class loading: {@code 'ggstart.{sh|bat} ADVANCED-EXAMPLES-DIR/config/example-cache.xml'}
+ * or {@link CacheExampleNodeStartup} can be used.
  */
 public class CacheDataLoaderExample {
     /** Cache name. */

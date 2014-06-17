@@ -21,6 +21,7 @@
 
 package org.gridgain.examples.datagrid.transaction;
 
+import org.gridgain.examples.datagrid.*;
 import org.gridgain.grid.*;
 import org.gridgain.grid.cache.*;
 
@@ -32,6 +33,10 @@ import static org.gridgain.grid.cache.GridCacheTxIsolation.*;
 
 /**
  * Demonstrates how to use cache transactions.
+ * <p>
+ * Remote nodes should always be started with special configuration file which
+ * enables P2P class loading: {@code 'ggstart.{sh|bat} ADVANCED-EXAMPLES-DIR/config/example-cache.xml'}
+ * or {@link CacheExampleNodeStartup} can be used.
  */
 public class CacheTransactionExample {
     /** Cache name. */

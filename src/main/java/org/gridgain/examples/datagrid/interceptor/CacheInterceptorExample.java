@@ -26,7 +26,12 @@ import org.gridgain.grid.cache.*;
 import org.jetbrains.annotations.*;
 
 /**
- *
+ * This example shows how to configure and use cache interceptor to intercept certain
+ * cache operations and to affect the returning values or cancel inappropriate updates.
+ * <p>
+ * This example is intended for interceptor demonstration and is not supposed to run with remote nodes,
+ * however, it can be launched in cluster. In order to do that make sure all nodes in topology have
+ * {@link Interceptor} on class path.
  */
 public class CacheInterceptorExample {
     /**

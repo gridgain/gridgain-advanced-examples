@@ -21,6 +21,7 @@
 
 package org.gridgain.examples.events;
 
+import org.gridgain.examples.datagrid.*;
 import org.gridgain.grid.*;
 import org.gridgain.grid.events.*;
 import org.gridgain.grid.lang.*;
@@ -31,6 +32,10 @@ import static org.gridgain.grid.events.GridEventType.*;
 
 /**
  * Demonstrates event consume API that allows to register event listeners on remote nodes.
+ * <p>
+ * Remote nodes should always be started with special configuration file which
+ * enables P2P class loading: {@code 'ggstart.{sh|bat} ADVANCED-EXAMPLES-DIR/config/example-cache.xml'}
+ * or {@link CacheExampleNodeStartup} can be used.
  */
 public class EventsExample {
     /** Cache name. */

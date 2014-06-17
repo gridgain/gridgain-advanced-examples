@@ -21,11 +21,16 @@
 
 package org.gridgain.examples.datagrid.eviction;
 
+import org.gridgain.examples.datagrid.*;
 import org.gridgain.grid.*;
 import org.gridgain.grid.cache.*;
 
 /**
  * Demonstrates how to use cache TTL.
+ * <p>
+ * Remote nodes should always be started with special configuration file:
+ * {@code 'ggstart.{sh|bat} ADVANCED-EXAMPLES-DIR/config/example-cache.xml'}
+ * or {@link CacheExampleNodeStartup} can be used.
  */
 public class CacheTtlExample {
     /** Cache name. */

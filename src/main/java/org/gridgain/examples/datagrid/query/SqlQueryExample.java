@@ -21,6 +21,7 @@
 
 package org.gridgain.examples.datagrid.query;
 
+import org.gridgain.examples.datagrid.*;
 import org.gridgain.examples.datagrid.model.*;
 import org.gridgain.grid.*;
 import org.gridgain.grid.cache.*;
@@ -34,13 +35,14 @@ import java.util.Map.*;
  * This example shows SQL query usage.
  * <p>
  * Remote nodes should always be started with special configuration file which
- * enables P2P class loading: {@code 'ggstart.{sh|bat} ADVANCED-EXAMPLES-DIR/config/example-cache.xml'}.
+ * enables P2P class loading: {@code 'ggstart.{sh|bat} ADVANCED-EXAMPLES-DIR/config/example-cache.xml'}
+ * or {@link CacheExampleNodeStartup} can be used.
  */
 public class SqlQueryExample {
-    /** Partitioned cache name. */
+    /** Partitioned cache name (to store employees). */
     private static final String PARTITIONED_CACHE_NAME = "partitioned";
 
-    /** Partitioned cache name. */
+    /** Replicated cache name (to store organizations). */
     private static final String REPLICATED_CACHE_NAME = "replicated";
 
     /**

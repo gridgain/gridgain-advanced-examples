@@ -21,6 +21,7 @@
 
 package org.gridgain.examples.datagrid.lock;
 
+import org.gridgain.examples.datagrid.*;
 import org.gridgain.grid.*;
 import org.gridgain.grid.cache.*;
 
@@ -28,6 +29,10 @@ import java.util.concurrent.atomic.*;
 
 /**
  * Demonstrates how to use cache locks.
+ * <p>
+ * Remote nodes should always be started with special configuration file:
+ * {@code 'ggstart.{sh|bat} ADVANCED-EXAMPLES-DIR/config/example-cache.xml'}
+ * or {@link CacheExampleNodeStartup} can be used.
  */
 public class CacheLockExample {
     /** Cache name. */

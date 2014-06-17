@@ -21,13 +21,20 @@
 
 package org.gridgain.examples.datagrid.near;
 
+import org.gridgain.examples.datagrid.*;
 import org.gridgain.grid.*;
 import org.gridgain.grid.cache.*;
 
 import java.util.concurrent.*;
 
 /**
- *
+ * This example demonstrates near cache functionality.
+ * <p>
+ * This example requires at least 1 remote node to work.
+ * <p>
+ * Remote nodes should always be started with special configuration file which
+ * enables P2P class loading: {@code 'ggstart.{sh|bat} ADVANCED-EXAMPLES-DIR/config/example-cache.xml'}
+ * or {@link CacheExampleNodeStartup} can be used.
  */
 public class NearCacheExample {
     /** Cache name. */
@@ -89,11 +96,11 @@ public class NearCacheExample {
                     throw new Exception("Key should not be in cache: " + key);
 
                 // This will create near entry.
-//                if (cache.get(key) != 10)
-//                    throw new Exception("Unexpected value in cache: " + key);
-//
-//                if (cache.peek(key) != 10)
-//                    throw new Exception("Unexpected value in cache: " + key);
+                if (cache.get(key) != 10)
+                    throw new Exception("Unexpected value in cache: " + key);
+
+                if (cache.peek(key) != 10)
+                    throw new Exception("Unexpected value in cache: " + key);
 
                 // Update key on remote node to make sure that it won't
                 // be present in the local near cache.

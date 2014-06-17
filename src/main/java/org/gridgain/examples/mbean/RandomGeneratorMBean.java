@@ -22,7 +22,7 @@
 package org.gridgain.examples.mbean;
 
 /**
- *
+ * MBean interface.
  */
 public interface RandomGeneratorMBean {
     /**

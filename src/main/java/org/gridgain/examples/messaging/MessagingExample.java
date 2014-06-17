@@ -21,6 +21,7 @@
 
 package org.gridgain.examples.messaging;
 
+import org.gridgain.examples.datagrid.*;
 import org.gridgain.grid.*;
 import org.gridgain.grid.lang.*;
 
@@ -28,6 +29,10 @@ import java.util.*;
 
 /**
  * Example that demonstrates how to exchange messages between nodes.
+ * <p>
+ * Remote nodes should always be started with special configuration file which
+ * enables P2P class loading: {@code 'ggstart.{sh|bat} ADVANCED-EXAMPLES-DIR/config/example-compute.xml'}
+ * or {@link CacheExampleNodeStartup} can be used.
  */
 public final class MessagingExample {
     /** Message topics. */
@@ -40,7 +45,7 @@ public final class MessagingExample {
      * @throws GridException If example execution failed.
      */
     public static void main(String[] args) throws Exception {
-        try (Grid g = GridGain.start("examples/config/example-compute.xml")) {
+        try (Grid g = GridGain.start("config/example-compute.xml")) {
             System.out.println();
             System.out.println(">>> Messaging example started.");
 

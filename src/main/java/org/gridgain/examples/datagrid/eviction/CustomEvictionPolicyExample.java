@@ -38,7 +38,6 @@ import java.util.concurrent.atomic.*;
  *     <li>Load multiple employees to trigger eviction.</li>
  *     <li>Write a custom eviction policy that evict employees according to priority (write to log).</li>
  * </ol>
- *
  * <p>
  * This example is intended for custom eviction policy demonstration and is not supposed to run with remote nodes,
  * however, it can be launched in cluster. In order to do that make sure all nodes in topology have

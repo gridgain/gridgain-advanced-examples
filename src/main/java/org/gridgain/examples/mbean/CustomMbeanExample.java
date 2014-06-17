@@ -27,7 +27,9 @@ import javax.management.*;
 import javax.swing.*;
 
 /**
- *
+ * This example demonstrates how to register custom MBean.
+ * <p>
+ * This example is intended for custom MBean demonstration and is not supposed to run with remote nodes.
  */
 public class CustomMbeanExample {
     /**

@@ -24,7 +24,7 @@ package org.gridgain.examples.mbean;
 import java.util.*;
 
 /**
- *
+ * MBean implementation.
  */
 public class RandomGeneratorMBeanImpl implements RandomGeneratorMBean {
     /** NOTE: In production this should be thread local. */

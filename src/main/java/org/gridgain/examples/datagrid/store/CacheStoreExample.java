@@ -30,9 +30,10 @@ import static org.gridgain.grid.cache.GridCacheTxIsolation.*;
 
 /**
  * Demonstrates cache store with and without write-through.
- *
- * @author @java.author
- * @version @java.version
+ * <p>
+ * This example is intended for custom cache store demonstration and is not supposed to run with remote nodes,
+ * however, it can be launched in cluster. In order to do that make sure all nodes in topology have
+ * {@link CacheMongoStore} and {@link Employee} on class path.
  */
 public class CacheStoreExample {
     /**

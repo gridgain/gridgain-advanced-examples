@@ -78,6 +78,18 @@ public class Person implements Serializable {
         this.salary = salary;
     }
 
+    /**
+     * @param p Person to copy.
+     */
+    public Person(Person p) {
+        id = p.getId();
+        orgId = p.getOrganizationId();
+        firstName = p.getFirstName();
+        lastName = p.getLastName();
+        resume = p.getResume();
+        salary = p.getSalary();
+    }
+
     public long getId() {
         return id;
     }
@@ -86,11 +98,11 @@ public class Person implements Serializable {
         this.id = id;
     }
 
-    public long getOrgId() {
+    public long getOrganizationId() {
         return orgId;
     }
 
-    public void setOrgId(long orgId) {
+    public void setOrganizationId(long orgId) {
         this.orgId = orgId;
     }
 
