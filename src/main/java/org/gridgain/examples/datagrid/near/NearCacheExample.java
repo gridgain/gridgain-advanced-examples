@@ -23,7 +23,6 @@ package org.gridgain.examples.datagrid.near;
 
 import org.gridgain.grid.*;
 import org.gridgain.grid.cache.*;
-import org.gridgain.grid.resources.*;
 
 import java.util.concurrent.*;
 
@@ -48,8 +47,15 @@ public class NearCacheExample {
             else {
                 int key = -1;
 
+                final GridCache<Integer, Integer> cache = g.cache(CACHE_NAME);
+
+                // Find key for which this node is neither primary or backup.
+                // This will guarantee that the found key will end up in the near cache,
+                // and not in the main partitioned cache.
                 for (int i = 0; i < 1000; i++) {
-                    GridCacheEntry<Object, Object> entry = g.cache(CACHE_NAME).entry(i);
+                    GridCacheEntry<Integer, Integer> entry = cache.entry(i);
+
+                    assert entry != null;
 
                     if (!entry.backup() && !entry.primary()) {
                         key = i;
@@ -61,66 +67,63 @@ public class NearCacheExample {
                 if (key == -1)
                     throw new Exception("Failed to map key to remote node.");
 
-                if (g.cache(CACHE_NAME).get(key) != null)
+                // This will create near-cache entry.
+                if (cache.get(key) != null)
                     throw new Exception("Key should not be in cache: " + key);
 
                 System.out.println("Key belonging to remote node: " + key);
 
                 final int key0 = key;
 
+                // Update key on remote node to make sure that it won't
+                // be present in the local near cache.
                 g.forRemotes().compute().call(new Callable<Object>() {
-                    @GridInstanceResource
-                    private Grid g0;
-
                     @Override public Object call() throws Exception {
-                        System.out.println("Putting example key on node: " + g.localNode().id());
+                        System.out.println("Putting sample key on node: " + g.localNode().id());
 
-                        return g0.cache(CACHE_NAME).putx(key0, 10);
+                        return cache.putx(key0, 10);
                     }
                 }).get();
 
-                if (g.cache(CACHE_NAME).peek(key) != null)
+                if (cache.peek(key) != null)
                     throw new Exception("Key should not be in cache: " + key);
 
                 // This will create near entry.
-//                if (g.cache(CACHE_NAME).get(key) != 10)
+//                if (cache.get(key) != 10)
 //                    throw new Exception("Unexpected value in cache: " + key);
 //
-//                if (g.cache(CACHE_NAME).peek(key) != 10)
+//                if (cache.peek(key) != 10)
 //                    throw new Exception("Unexpected value in cache: " + key);
 
+                // Update key on remote node to make sure that it won't
+                // be present in the local near cache.
                 g.forRemotes().compute().call(new Callable<Object>() {
-                    @GridInstanceResource
-                    private Grid g0;
-
                     @Override public Object call() throws Exception {
                         System.out.println("Updating example key on node: " + g.localNode().id());
 
-                        return g0.cache(CACHE_NAME).putx(key0, 15);
+                        return cache.putx(key0, 15);
                     }
                 }).get();
 
-                Object val = g.cache(CACHE_NAME).peek(key);
+                // Peek into near cache.
+                Object val = cache.peek(key);
 
-//                if (val != 15)
-//                    throw new Exception("Unexpected value in cache: " + key + " " + val);
+                if (val != 15)
+                    throw new Exception("Unexpected value in cache [" + key + "=" + val + ']');
 
                 g.forRemotes().compute().call(new Callable<Object>() {
-                    @GridInstanceResource
-                    private Grid g0;
-
                     @Override public Object call() throws Exception {
                         System.out.println("Removing example key on node: " + g.localNode().id());
 
-                        return g0.cache(CACHE_NAME).remove(key0);
+                        return cache.remove(key0);
                     }
                 }).get();
 
-                if (g.cache(CACHE_NAME).peek(key) != null)
+                if (cache.peek(key) != null)
                     throw new Exception("Key should not be in cache: " + key);
 
                 // This will create near entry.
-                if (g.cache(CACHE_NAME).get(key) != null)
+                if (cache.get(key) != null)
                     throw new Exception("Unexpected value in cache: " + key);
             }
         }

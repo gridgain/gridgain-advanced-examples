@@ -137,7 +137,7 @@ public class CustomEvictionPolicyExample {
                         if (e0.getValue().evict() && map.remove(e0.getKey(), e0.getValue())) {
                             mapSize.decrement();
 
-                            System.out.println("Evicted employee with prio: " + e0.getKey().prio);
+                            System.out.println("Evicted employee with priority: " + e0.getKey().prio);
                         }
 
                         cnt = mapSize.sum() - MAX_SIZE;
