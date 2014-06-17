@@ -55,9 +55,9 @@ import java.util.*;
  * can experiment with other access types by modifying the Hibernate configuration file
  * {@code GRIDGAIN_HOME/examples/config/hibernate/example-hibernate-L2-cache.xml}, used by the example.
  * <p>
- * Remote nodes should always be started using {@link JpaExampleNodeStartup}
+ * Remote nodes should always be started using {@link JpaHibernateExampleNodeStartup}
  */
-public class JpaExample {
+public class JpaHibernateExample {
     /** JDBC URL for backing database (an H2 in-memory database is used). */
     private static final String JDBC_URL = "jdbc:h2:mem:example;DB_CLOSE_DELAY=-1";
 
@@ -77,7 +77,7 @@ public class JpaExample {
      */
     public static void main(String[] args) throws Exception {
         // Start the GridGain node, run the example, and stop the node when finished.
-        try (Grid grid = GridGain.start(JpaExampleNodeStartup.configuration())) {
+        try (Grid grid = GridGain.start(JpaHibernateExampleNodeStartup.configuration())) {
             // We use a single session factory, but create a dedicated session
             // for each transaction or query. This way we ensure that L1 cache
             // is not used (L1 cache has per-session scope only).
