@@ -99,7 +99,7 @@ public class NearCacheExample {
                 // be present in the local near cache.
                 g.forRemotes().compute().call(new Callable<Object>() {
                     @Override public Object call() throws Exception {
-                        System.out.println("Updating example key on node: " + g.localNode().id());
+                        System.out.println("Updating sample key on node: " + g.localNode().id());
 
                         return cache.putx(key0, 15);
                     }
