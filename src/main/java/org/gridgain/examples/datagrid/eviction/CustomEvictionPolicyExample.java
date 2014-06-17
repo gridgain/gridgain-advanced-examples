@@ -39,7 +39,10 @@ import java.util.concurrent.atomic.*;
  *     <li>Write a custom eviction policy that evict employees according to priority (write to log).</li>
  * </ol>
  *
- * To run this example against the cluster make sure that eviction policy is in class path of each node.
+ * <p>
+ * This example is intended for custom eviction policy demonstration and is not supposed to run with remote nodes,
+ * however, it can be launched in cluster. In order to do that make sure all nodes in topology have
+ * {@link EvictionPolicy} on class path.
  */
 public class CustomEvictionPolicyExample {
     /** */

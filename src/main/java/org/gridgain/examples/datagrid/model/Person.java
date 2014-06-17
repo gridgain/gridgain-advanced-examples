@@ -21,7 +21,6 @@
 
 package org.gridgain.examples.datagrid.model;
 
-import org.gridgain.grid.cache.affinity.*;
 import org.gridgain.grid.cache.query.*;
 
 import java.io.*;
@@ -58,9 +57,6 @@ public class Person implements Serializable {
     @GridCacheQuerySqlField
     private double salary;
 
-    /** Custom cache key to guarantee that person is always collocated with its organization. */
-    private transient GridCacheAffinityKey<Long> key;
-
     /**
      * Constructs person record.
      *
@@ -74,7 +70,8 @@ public class Person implements Serializable {
         // Generate unique ID for this person.
         id = IDGEN.incrementAndGet();
 
-        this.orgId = org.getId();
+        orgId = org.getId();
+
         this.firstName = firstName;
         this.lastName = lastName;
         this.resume = resume;
