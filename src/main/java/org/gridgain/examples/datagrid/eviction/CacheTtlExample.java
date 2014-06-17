@@ -47,6 +47,8 @@ public class CacheTtlExample {
             // Get empty cache entry.
             GridCacheEntry<Long, Long> e = cache.entry(0L);
 
+            assert e != null;
+
             // Set time to live first.
             e.timeToLive(1000);
 
@@ -55,7 +57,7 @@ public class CacheTtlExample {
 
             Long val = cache.get(0L);
 
-            if (val != 0L)
+            if (val == null || val != 0L)
                 throw new Exception("Failed to get proper value from cache: " + val);
 
             System.out.println("Waiting for entry to expire...");

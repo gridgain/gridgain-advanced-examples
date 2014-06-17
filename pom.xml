@@ -32,7 +32,6 @@
         <morphia.version>RELEASE</morphia.version>
     </properties>
 
-    <!-- Uncomment and change artifactId to gridgain-platform-ent to switch to enterprise edition -->
     <repositories>
         <repository>
             <id>GridGain External Repository</id>
