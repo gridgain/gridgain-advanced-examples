@@ -26,7 +26,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>1.7</maven.compiler.source>
         <maven.compiler.target>1.7</maven.compiler.target>
-        <gridgain.version>RELEASE</gridgain.version>
+        <gridgain.version>6.1.7</gridgain.version>
         <mongodb.version>RELEASE</mongodb.version>
         <embedded.mongo.version>RELEASE</embedded.mongo.version>
         <morphia.version>RELEASE</morphia.version>
