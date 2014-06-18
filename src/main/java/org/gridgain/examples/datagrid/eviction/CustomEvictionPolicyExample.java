@@ -97,7 +97,7 @@ public class CustomEvictionPolicyExample {
         /** Counter to avoid non-constant ConcurrentMap.size(). */
         private final AtomicLong mapSize = new AtomicLong();
 
-        /** Map to maintain employees in proper order. */
+        /** Sorted map to maintain employees in priority order. */
         private final ConcurrentNavigableMap<PolicyKey, GridCacheEntry<Integer, Employee>> map =
             new ConcurrentSkipListMap<>();
 
@@ -185,7 +185,7 @@ public class CustomEvictionPolicyExample {
     }
 
     /**
-     * Eviction policy key.
+     * Eviction policy key. Must be comparable based on priority.
      */
     private static class PolicyKey implements Comparable<PolicyKey> {
         /** */
