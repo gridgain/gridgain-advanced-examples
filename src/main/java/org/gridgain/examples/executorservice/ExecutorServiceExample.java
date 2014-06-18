@@ -30,7 +30,7 @@ public class ExecutorServiceExample {
             Collection<Future<?>> futs = new ArrayList<>();
 
             // Iterate through all words in the sentence and create jobs.
-            for (final String word : "Print words using runnable".split(" ")) {
+            for (final String word : "Print each word on random node".split(" ")) {
                 // Execute runnable on some node.
                 futs.add(exec.submit(new GridRunnable() {
                     @Override public void run() {
@@ -39,6 +39,7 @@ public class ExecutorServiceExample {
                 }));
             }
 
+            // Wait for all futures to complete.
             for (Future<?> fut : futs)
                 fut.get();
         }

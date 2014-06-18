@@ -84,10 +84,12 @@ public class CustomSqlFunctionsExample {
     }
 
     /**
-     *
+     * Function definitions.
      */
     public static class Functions {
         /**
+         * Function must be a static method.
+         *
          * @param x Argument.
          * @return Square of given value.
          */

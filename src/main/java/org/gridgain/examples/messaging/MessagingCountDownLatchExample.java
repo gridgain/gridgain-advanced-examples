@@ -1,17 +1,3 @@
-/*
- *    Licensed under the Apache License, Version 2.0 (the "License");
- *    you may not use this file except in compliance with the License.
- *    You may obtain a copy of the License at
- *
- *        http://www.apache.org/licenses/LICENSE-2.0
- *
- *    Unless required by applicable law or agreed to in writing, software
- *    distributed under the License is distributed on an "AS IS" BASIS,
- *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *    See the License for the specific language governing permissions and
- *    limitations under the License.
- */
-
 /*  _________        _____ __________________        _____
  *  __  ____/___________(_)______  /__  ____/______ ____(_)_______
  *  _  / __  __  ___/__  / _  __  / _  / __  _  __ `/__  / __  __ \
@@ -44,7 +30,7 @@ public final class MessagingCountDownLatchExample {
     private static final String LATCH_NAME = "MessageLatch";
 
     /** Message topics. */
-    private enum TOPIC { ORDERED, UNORDERED }
+    private static final String TOPIC = "LATCH_TOPIC";
 
     /**
      * Executes example.
@@ -55,26 +41,20 @@ public final class MessagingCountDownLatchExample {
     public static void main(String[] args) throws Exception {
         try (Grid g = GridGain.start("config/example-cache.xml")) {
             System.out.println();
-            System.out.println(">>> Messaging example started.");
+            System.out.println(">>> Messaging count down latch example started.");
 
             // Projection for remote nodes.
             GridProjection rmtPrj = g.forRemotes();
 
-            int rmtNodes = rmtPrj.nodes().size();
-
-            if (rmtNodes == 0) {
-                System.out.println("Start one or more remote nodes to run this example.");
-
-                return;
-            }
-
             GridCacheDataStructures dataStructures = g.cache(CACHE_NAME).dataStructures();
 
-            int unorderedMsgCnt = 10;
-            int orderedMsgCnt = 10;
+            int msgCnt = 20;
 
-            GridCacheCountDownLatch latch = dataStructures.countDownLatch(LATCH_NAME,
-                rmtNodes * (unorderedMsgCnt + orderedMsgCnt), /*auto delete*/false, true);
+            GridCacheCountDownLatch latch = dataStructures.countDownLatch(
+                LATCH_NAME,
+                msgCnt,
+                /*auto delete*/false,
+                /*create*/true);
 
             try {
                 assert latch != null;
@@ -83,16 +63,10 @@ public final class MessagingCountDownLatchExample {
                 startListening(g, rmtPrj);
 
                 // Send unordered messages to all remote nodes.
-                for (int i = 0; i < unorderedMsgCnt; i++)
-                    rmtPrj.message().send(TOPIC.UNORDERED, Integer.toString(i));
+                for (int i = 0; i < msgCnt; i++)
+                    rmtPrj.forRandom().message().send(TOPIC, Integer.toString(i));
 
-                System.out.println(">>> Finished sending unordered messages.");
-
-                // Send ordered messages to all remote nodes.
-                for (int i = 0; i < orderedMsgCnt; i++)
-                    rmtPrj.message().sendOrdered(TOPIC.ORDERED, Integer.toString(i), 0);
-
-                System.out.println(">>> Finished sending ordered messages. Waiting for all messages being processed.");
+                System.out.println(">>> Finished sending messages. Waiting for all messages being processed.");
 
                 latch.await();
 
@@ -113,31 +87,10 @@ public final class MessagingCountDownLatchExample {
      */
     private static void startListening(final Grid g, GridProjection prj) throws GridException {
         // Add ordered message listener.
-        prj.message().remoteListen(TOPIC.ORDERED, new GridBiPredicate<UUID, String>() {
+        prj.message().remoteListen(TOPIC, new GridBiPredicate<UUID, String>() {
             @Override public boolean apply(UUID nodeId, String msg) {
                 try {
-                    System.out.println("Received ordered message [msg=" + msg + ", fromNodeId=" + nodeId + ']');
-
-                    GridCacheCountDownLatch latch = g.cache(CACHE_NAME).dataStructures().countDownLatch(
-                        LATCH_NAME, 0, false, false);
-
-                    assert latch != null;
-
-                    latch.countDown();
-
-                    return true; // Return true to continue listening.
-                }
-                catch (GridException e) {
-                    throw new GridClosureException(e);
-                }
-            }
-        }).get();
-
-        // Add unordered message listener.
-        prj.message().remoteListen(TOPIC.UNORDERED, new GridBiPredicate<UUID, String>() {
-            @Override public boolean apply(UUID nodeId, String msg) {
-                try {
-                    System.out.println("Received unordered message [msg=" + msg + ", fromNodeId=" + nodeId + ']');
+                    System.out.println("Received message [msg=" + msg + ", fromNodeId=" + nodeId + ']');
 
                     GridCacheCountDownLatch latch = g.cache(CACHE_NAME).dataStructures().countDownLatch(
                         LATCH_NAME, 0, false, false);

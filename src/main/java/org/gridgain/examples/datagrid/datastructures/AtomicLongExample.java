@@ -10,6 +10,7 @@
 package org.gridgain.examples.datagrid.datastructures;
 
 import org.gridgain.grid.*;
+import org.gridgain.grid.cache.*;
 import org.gridgain.grid.cache.datastructures.*;
 import org.gridgain.grid.lang.*;
 import org.gridgain.grid.util.lang.*;
@@ -30,10 +31,11 @@ public class AtomicLongExample {
      */
     public static void main(String[] args) throws Exception {
         try (final Grid g = GridGain.start("config/example-cache.xml")) {
-            GridCacheDataStructures ds = g.cache(CACHE_NAME).dataStructures();
+            final GridCache<Object, Object> cache = g.cache(CACHE_NAME);
 
-            GridCacheAtomicLong cntr = ds.atomicLong(ATOMIC_LONG_NAME,
-                0, /*create*/true);
+            GridCacheDataStructures ds = cache.dataStructures();
+
+            GridCacheAtomicLong cntr = ds.atomicLong(ATOMIC_LONG_NAME, 0, /*create*/true);
 
             try {
                 assert cntr != null;
@@ -41,7 +43,7 @@ public class AtomicLongExample {
                 GridRunnable runnable = new GridRunnable() {
                     @Override public void run() {
                         try {
-                            GridCacheAtomicLong cntr = g.cache(CACHE_NAME).dataStructures().atomicLong(
+                            GridCacheAtomicLong cntr = cache.dataStructures().atomicLong(
                                 ATOMIC_LONG_NAME, 0, /*create*/false);
 
                             assert cntr != null;
