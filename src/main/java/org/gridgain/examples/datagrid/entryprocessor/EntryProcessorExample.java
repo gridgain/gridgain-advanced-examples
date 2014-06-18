@@ -56,7 +56,10 @@ public class EntryProcessorExample {
             // Populate cache with data.
             initialize();
 
-            // Output employees of other organization.
+            // Organization name to query.
+            final String orgName = "Other";
+
+            // Output employees for a given organization.
             GridCache<Long, Person> cache = GridGain.grid().cache(PARTITIONED_CACHE_NAME);
 
             // Create query which joins on 2 types to select people for a specific organization.
@@ -70,10 +73,10 @@ public class EntryProcessorExample {
             System.out.println("Initial salaries:");
 
             // Execute query for find employees for organization.
-            for (Entry<Long, Person> p : qry.execute("Other").get())
+            for (Entry<Long, Person> p : qry.execute(orgName).get())
                 System.out.println("Person: " + p);
 
-            // Increase salary for Other's company employees by 10%.
+            // Increase salary for a company employees by 10%.
             // 1. Execute query to get the list of Employee IDs.
             // Create query to get IDs of all employees.
             GridCacheQuery<List<?>> qry1 = cache.queries().createSqlFieldsQuery(
@@ -83,7 +86,7 @@ public class EntryProcessorExample {
 
             // Execute query to get collection of rows. In this particular
             // case each row will have one element with full name of an employees.
-            Collection<List<?>> res = qry1.execute("Other").get();
+            Collection<List<?>> res = qry1.execute(orgName).get();
 
             Set<Long> ids = new HashSet<>(res.size(), 1.0f);
 
@@ -91,11 +94,11 @@ public class EntryProcessorExample {
                 ids.add((Long)l.get(0));
 
             System.out.println();
-            System.out.println("Will update salaries for Other organizaion by 10%.");
+            System.out.println("Will update salaries for a given organizaion by 10%.");
 
             g.<Long, Person>cache(PARTITIONED_CACHE_NAME).transformAll(ids, new GridClosure<Person, Person>() {
                 @Override public Person apply(Person person) {
-                    System.out.println("Transform closure has been called with parameter: " + person);
+                    System.out.println("Transform closure has been called for person: " + person.getFirstName());
 
                     if (person == null)
                         return null;

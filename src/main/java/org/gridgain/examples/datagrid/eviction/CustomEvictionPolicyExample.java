@@ -125,6 +125,7 @@ public class CustomEvictionPolicyExample {
 
                 mapSize.incrementAndGet();
 
+                // If another thread is processing the same entry, then undo and return.
                 if (e.putMetaIfAbsent(META, key) != null || !e.isCached()) {
                     if (map.remove(key, e))
                         mapSize.decrementAndGet();
@@ -132,11 +133,13 @@ public class CustomEvictionPolicyExample {
                     return;
                 }
 
-                // Map size has been increased. Need to check if evictions needed.
+                // At this point, the map size has been increased.
+                // Need to check if evictions are needed.
                 long cnt = mapSize.get() - MAX_SIZE;
 
                 if (cnt > 0) {
                     for (Entry<PolicyKey, GridCacheEntry<Integer, Employee>> e0 : map.entrySet()) {
+                        // If successfully evicted.
                         if (e0.getValue().evict() && map.remove(e0.getKey(), e0.getValue())) {
                             mapSize.decrementAndGet();
 
@@ -145,6 +148,7 @@ public class CustomEvictionPolicyExample {
 
                         cnt = mapSize.get() - MAX_SIZE;
 
+                        // If we evicted required number of entries, return.
                         if (cnt <= 0)
                             return;
                     }
@@ -154,7 +158,7 @@ public class CustomEvictionPolicyExample {
     }
 
     /**
-     *
+     * Employee.
      */
     public static class Employee {
         /** */
@@ -181,7 +185,7 @@ public class CustomEvictionPolicyExample {
     }
 
     /**
-     *
+     * Eviction policy key.
      */
     private static class PolicyKey implements Comparable<PolicyKey> {
         /** */
