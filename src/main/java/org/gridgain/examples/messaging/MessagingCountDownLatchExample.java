@@ -50,6 +50,9 @@ public final class MessagingCountDownLatchExample {
 
             int msgCnt = 20;
 
+            // Register listeners on all grid nodes.
+            UUID listenId = startListening(g, rmtPrj);
+
             GridCacheCountDownLatch latch = dataStructures.countDownLatch(
                 LATCH_NAME,
                 msgCnt,
@@ -58,9 +61,6 @@ public final class MessagingCountDownLatchExample {
 
             try {
                 assert latch != null;
-
-                // Register listeners on all grid nodes.
-                startListening(g, rmtPrj);
 
                 // Send unordered messages to all remote nodes.
                 for (int i = 0; i < msgCnt; i++)
@@ -75,6 +75,8 @@ public final class MessagingCountDownLatchExample {
             }
             finally {
                 dataStructures.removeCountDownLatch(LATCH_NAME);
+
+                rmtPrj.message().stopRemoteListen(listenId);
             }
         }
     }
@@ -85,9 +87,9 @@ public final class MessagingCountDownLatchExample {
      * @param prj Grid projection.
      * @throws GridException If failed.
      */
-    private static void startListening(final Grid g, GridProjection prj) throws GridException {
+    private static UUID startListening(final Grid g, GridProjection prj) throws GridException {
         // Add ordered message listener.
-        prj.message().remoteListen(TOPIC, new GridBiPredicate<UUID, String>() {
+        return prj.message().remoteListen(TOPIC, new GridBiPredicate<UUID, String>() {
             @Override public boolean apply(UUID nodeId, String msg) {
                 try {
                     System.out.println("Received message [msg=" + msg + ", fromNodeId=" + nodeId + ']');

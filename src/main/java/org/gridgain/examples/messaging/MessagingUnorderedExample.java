@@ -41,14 +41,19 @@ public final class MessagingUnorderedExample {
             int msgCnt = 10;
 
             // Register listeners on all grid nodes.
-            startListening(rmtPrj);
+            UUID listenId = startListening(rmtPrj);
 
-            // Send unordered messages to all remote nodes.
-            for (int i = 0; i < msgCnt; i++)
-                rmtPrj.message().send(TOPIC, Integer.toString(i));
+            try {
+                // Send unordered messages to all remote nodes.
+                for (int i = 0; i < msgCnt; i++)
+                    rmtPrj.message().send(TOPIC, Integer.toString(i));
 
-            System.out.println(">>> Finished sending unordered messages. Check output on all nodes for messages " +
-                "printouts.");
+                System.out.println(">>> Finished sending unordered messages. Check output on all nodes for messages " +
+                    "printouts.");
+            }
+            finally {
+                rmtPrj.message().stopRemoteListen(listenId);
+            }
         }
     }
 
@@ -58,9 +63,9 @@ public final class MessagingUnorderedExample {
      * @param prj Grid projection.
      * @throws GridException If failed.
      */
-    private static void startListening(GridProjection prj) throws GridException {
+    private static UUID startListening(GridProjection prj) throws GridException {
         // Add ordered message listener.
-        prj.message().remoteListen(TOPIC, new GridBiPredicate<UUID, String>() {
+        return prj.message().remoteListen(TOPIC, new GridBiPredicate<UUID, String>() {
             @Override public boolean apply(UUID nodeId, String msg) {
                 System.out.println("Received unordered message [msg=" + msg + ", fromNodeId=" + nodeId + ']');
 
