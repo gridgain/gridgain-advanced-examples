@@ -118,7 +118,8 @@ public class WeightedAverageExample {
     }
 
     /**
-     *
+     * Class representing a segment of a car route. Segment
+     * is characterized by speed and duration.
      */
     private static class Segment implements Serializable {
         /** */
