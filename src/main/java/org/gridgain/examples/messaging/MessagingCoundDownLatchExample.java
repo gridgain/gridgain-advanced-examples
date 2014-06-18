@@ -74,7 +74,7 @@ public final class MessagingCoundDownLatchExample {
             int orderedMsgCnt = 10;
 
             GridCacheCountDownLatch latch = dataStructures.countDownLatch(LATCH_NAME,
-                rmtNodes * (unorderedMsgCnt + orderedMsgCnt), false, true);
+                rmtNodes * (unorderedMsgCnt + orderedMsgCnt), /*auto delete*/false, true);
 
             try {
                 assert latch != null;
