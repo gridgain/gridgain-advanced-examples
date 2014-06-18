@@ -49,7 +49,7 @@ public class NearCacheExample {
     public static void main(String[] args) throws Exception {
         try (Grid g = GridGain.start("config/example-cache-near.xml")) {
             if (g.nodes().size() == 1) {
-                System.err.println("Start remote nodes to run this example.");
+                System.err.println("Need to start at least 1 remote node to run this example.");
             }
             else {
                 int key = -1;
@@ -74,7 +74,6 @@ public class NearCacheExample {
                 if (key == -1)
                     throw new Exception("Failed to map key to remote node.");
 
-                // This will create near-cache entry.
                 if (cache.get(key) != null)
                     throw new Exception("Key should not be in cache: " + key);
 
@@ -120,7 +119,7 @@ public class NearCacheExample {
 
                 g.forRemotes().compute().call(new Callable<Object>() {
                     @Override public Object call() throws Exception {
-                        System.out.println("Removing example key on node: " + g.localNode().id());
+                        System.out.println("Removing sample key on node: " + g.localNode().id());
 
                         return cache.remove(key0);
                     }
