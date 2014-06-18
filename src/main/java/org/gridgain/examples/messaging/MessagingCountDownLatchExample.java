@@ -36,7 +36,7 @@ import java.util.*;
  * enables P2P class loading: {@code 'ggstart.{sh|bat} ADVANCED-EXAMPLES-DIR/config/example-cache.xml'}
  * or {@link CacheExampleNodeStartup} can be used.
  */
-public final class MessagingCoundDownLatchExample {
+public final class MessagingCountDownLatchExample {
     /** Cache name. */
     private static final String CACHE_NAME = "partitioned_tx";
 
