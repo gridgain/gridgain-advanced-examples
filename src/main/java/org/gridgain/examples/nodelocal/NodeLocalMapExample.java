@@ -12,12 +12,16 @@ package org.gridgain.examples.nodelocal;
 import org.gridgain.grid.*;
 import org.gridgain.grid.lang.*;
 
+import java.util.*;
 import java.util.concurrent.atomic.*;
 
 /**
  * This example shows how to use NodeLocalMap.
  */
 public class NodeLocalMapExample {
+    /** Key for node local map. */
+    public static final String COUNTER_KEY = "counter";
+
     /**
      * @param args Arguments.
      * @throws Exception If failed.
@@ -28,10 +32,10 @@ public class NodeLocalMapExample {
                 @Override public void run() {
                     GridNodeLocalMap<String, AtomicInteger> locMap = g.nodeLocalMap();
 
-                    AtomicInteger cntr = locMap.get("counter");
+                    AtomicInteger cntr = locMap.get(COUNTER_KEY);
 
                     if (cntr == null)
-                        cntr = locMap.addIfAbsent("counter", new AtomicInteger());
+                        cntr = locMap.addIfAbsent(COUNTER_KEY, new AtomicInteger());
 
                     int execs = cntr.incrementAndGet();
 
@@ -39,8 +43,27 @@ public class NodeLocalMapExample {
                 }
             };
 
-            for (int i = 0; i < 5; i++)
+            int execCnt = 10;
+
+            for (int i = 0; i < execCnt; i++)
                 g.forRandom().compute().run(runnable).get();
+
+            GridFuture<Collection<Integer>> qryFut = g.compute().broadcast(new GridCallable<Integer>() {
+                @Override public Integer call() throws Exception {
+                    GridNodeLocalMap<String, AtomicInteger> locMap = g.nodeLocalMap();
+
+                    AtomicInteger cnt = locMap.get(COUNTER_KEY);
+
+                    return cnt == null ? 0 : cnt.get();
+                }
+            });
+
+            int sum = 0;
+
+            for (Integer c : qryFut.get())
+                sum += c;
+
+            System.out.println("Execution count [expected=" + execCnt + ", actual=" + sum + ']');
         }
     }
 }
