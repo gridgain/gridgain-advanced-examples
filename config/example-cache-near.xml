@@ -63,7 +63,7 @@
                     <property name="cacheMode" value="PARTITIONED"/>
                     <property name="atomicityMode" value="ATOMIC"/>
 
-                    <!--This property will enable NEAR-CACHE on the cline or server node. -->
+                    <!--This property will enable NEAR-CACHE on the client or server node. -->
                     <property name="distributionMode" value="NEAR_ONLY"/>
 
                     <property name="backups" value="1"/>
@@ -75,7 +75,7 @@
                     <property name="cacheMode" value="PARTITIONED"/>
                     <property name="atomicityMode" value="TRANSACTIONAL"/>
 
-                    <!--This property will enable NEAR-CACHE on the cline or server node. -->
+                    <!--This property will enable NEAR-CACHE on the client or server node. -->
                     <property name="distributionMode" value="NEAR_ONLY"/>
 
                     <property name="backups" value="1"/>
