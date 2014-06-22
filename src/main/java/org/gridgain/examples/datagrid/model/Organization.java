@@ -72,5 +72,27 @@ public class Organization implements Serializable {
     @Override public String toString() {
         return "Organization " + "[id=" + id + ", name=" + name + ']';
     }
+
+    /** {@inheritDoc} */
+    @Override public boolean equals(Object o) {
+        if (this == o)
+            return true;
+
+        if (!(o instanceof Organization))
+            return false;
+
+        Organization that = (Organization)o;
+
+        return id == that.id && name.equals(that.name);
+    }
+
+    /** {@inheritDoc} */
+    @Override public int hashCode() {
+        int res = (int)(id ^ (id >>> 32));
+
+        res = 31 * res + name.hashCode();
+
+        return res;
+    }
 }
 
