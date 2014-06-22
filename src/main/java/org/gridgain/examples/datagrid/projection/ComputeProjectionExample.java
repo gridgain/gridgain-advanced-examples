@@ -16,11 +16,11 @@ import org.gridgain.grid.lang.*;
 /**
  * Demonstrates new functional APIs.
  * <p>
- * Remote nodes should always be started with special configuration file which
- * enables P2P class loading: {@code 'ggstart.{sh|bat} examples/config/example-compute.xml'}.
+ * Remote nodes should always be started as follows:
+ * {@code 'ggstart.{sh|bat} config/example-cache.xml'}.
  * <p>
  * Alternatively you can run {@link CacheExampleNodeStartup} in another JVM which will start GridGain node
- * with {@code examples/config/example-compute.xml} configuration.
+ * with {@code config/example-cache.xml} configuration.
  */
 public class ComputeProjectionExample {
     /**
