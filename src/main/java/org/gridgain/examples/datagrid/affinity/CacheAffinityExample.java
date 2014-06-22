@@ -33,8 +33,8 @@ import java.util.*;
  * and co-locates simple closure execution with each key. The goal of this particular
  * example is to provide the simplest code example of this logic.
  * <p>
- * Remote nodes should always be started with special configuration file which
- * enables P2P class loading: {@code 'ggstart.{sh|bat} config/example-cache.xml'}.
+ * Remote nodes should always be started like this:
+ * {@code 'ggstart.{sh|bat} config/example-cache.xml'}.
  */
 public final class CacheAffinityExample {
     /** Cache name. */
