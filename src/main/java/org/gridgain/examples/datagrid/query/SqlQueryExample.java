@@ -213,8 +213,9 @@ public class SqlQueryExample {
     private static void groupByQuery() throws GridException {
         GridCache<?, ?> cache = GridGain.grid().cache(PARTITIONED_CACHE_NAME);
 
-        // Create query to get sum of salaries and number of summed rows
-        // grouping results by organization name.
+        // Create query to get salary averages grouped by organization name.
+        // We don't need to perform any extra manual steps here, because
+        // Person data is colocated based on organization IDs.
         GridCacheQuery<List<?>> qry = cache.queries().createSqlFieldsQuery(
             "select avg(salary), Organization.name " +
                 "from \"partitioned\".Person, \"replicated\".Organization " +
