@@ -51,6 +51,28 @@ public class PersonKey implements Serializable {
     }
 
     /** {@inheritDoc} */
+    @Override public boolean equals(Object o) {
+        if (this == o)
+            return true;
+
+        if (!(o instanceof PersonKey))
+            return false;
+
+        PersonKey personKey = (PersonKey)o;
+
+        return id == personKey.id && orgId == personKey.orgId;
+    }
+
+    /** {@inheritDoc} */
+    @Override  public int hashCode() {
+        int res = (int)(id ^ (id >>> 32));
+
+        res = 31 * res + (int)(orgId ^ (orgId >>> 32));
+
+        return res;
+    }
+
+    /** {@inheritDoc} */
     @Override public String toString() {
         return Long.toString(id);
     }
