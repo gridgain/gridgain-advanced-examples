@@ -57,7 +57,7 @@ public class EntryProcessorExample {
             initialize();
 
             // Organization name to query.
-            final String orgName = "Other";
+            final String orgName = "GridGain";
 
             // Output employees for a given organization.
             GridCache<PersonKey, Person> cache = GridGain.grid().cache(PARTITIONED_CACHE_NAME);
@@ -94,7 +94,7 @@ public class EntryProcessorExample {
                 ids.add(new PersonKey((Long)l.get(0), (Long)l.get(1)));
 
             System.out.println();
-            System.out.println("Will update salaries for a given organizaion by 10%.");
+            System.out.println("Will update salaries for a given organization by 10%.");
 
             g.<PersonKey, Person>cache(PARTITIONED_CACHE_NAME).transformAll(ids, new GridClosure<Person, Person>() {
                 @Override public Person apply(Person person) {
@@ -117,7 +117,7 @@ public class EntryProcessorExample {
             System.out.println("Salaries after update:");
 
             // Execute query one more time to print salaries after update.
-            for (Entry<PersonKey, Person> p : qry.execute("Other").get())
+            for (Entry<PersonKey, Person> p : qry.execute(orgName).get())
                 System.out.println("Person: " + p);
         }
     }
@@ -134,6 +134,10 @@ public class EntryProcessorExample {
 
         // Person projection.
         GridCacheProjection<PersonKey, Person> personCache = GridGain.grid().cache(PARTITIONED_CACHE_NAME);
+
+        // Clear caches before start.
+        personCache.globalClearAll();
+        orgCache.globalClearAll();
 
         // Organizations.
         Organization org1 = new Organization("GridGain");

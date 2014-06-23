@@ -64,6 +64,7 @@ public class CacheStoreExample {
         GridConfiguration c = new GridConfiguration();
 
         c.setLocalHost("localhost");
+        c.setPeerClassLoadingEnabled(true);
 
         GridCacheConfiguration cc = new GridCacheConfiguration();
 
@@ -79,6 +80,11 @@ public class CacheStoreExample {
         c.setCacheConfiguration(cc);
 
         try (Grid g = GridGain.start(c)) {
+            GridCache<Long, Employee> cache = g.cache("test");
+
+            // Clear cache before running example.
+            cache.globalClearAll();
+
             atomicExample(g);
             transactionExample(g);
             lockExample(g);

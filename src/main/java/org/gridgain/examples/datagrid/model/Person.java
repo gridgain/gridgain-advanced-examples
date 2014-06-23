@@ -31,7 +31,7 @@ import java.util.concurrent.atomic.*;
  */
 public class Person implements Serializable {
     /** ID generator. */
-    private static final AtomicLong IDGEN = new AtomicLong(System.currentTimeMillis());
+    private static final AtomicLong IDGEN = new AtomicLong();
 
     /** Person ID (indexed). */
     @GridCacheQuerySqlField(index = true)

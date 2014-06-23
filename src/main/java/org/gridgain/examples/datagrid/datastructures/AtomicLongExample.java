@@ -33,6 +33,9 @@ public class AtomicLongExample {
         try (final Grid g = GridGain.start("config/example-cache.xml")) {
             final GridCache<Object, Object> cache = g.cache(CACHE_NAME);
 
+            // Clear caches before running example.
+            cache.globalClearAll();
+
             GridCacheDataStructures ds = cache.dataStructures();
 
             GridCacheAtomicLong cntr = ds.atomicLong(ATOMIC_LONG_NAME, 0, /*create*/true);

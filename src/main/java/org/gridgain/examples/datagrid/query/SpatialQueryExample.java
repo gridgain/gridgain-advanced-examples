@@ -47,6 +47,9 @@ public class SpatialQueryExample {
         try (Grid g = GridGain.start("config/example-cache.xml")) {
             GridCache<Integer, Entry> c = g.cache(CACHE_NAME);
 
+            // Clear caches before running example.
+            c.globalClearAll();
+
             Random rnd = new Random();
 
             WKTReader r = new WKTReader();

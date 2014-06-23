@@ -55,6 +55,9 @@ public class CacheTransactionExample {
 
             GridCache<Long, Account> cache = g.cache(CACHE_NAME);
 
+            // Clear cache before running example.
+            cache.globalClearAll();
+
             // Initialize.
             cache.putx(1L, new Account(1, 100));
             cache.putx(2L, new Account(2, 500));

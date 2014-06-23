@@ -126,8 +126,8 @@ public class SqlQueryExample {
                 "and lower(Organization.name) = lower(?)").enableDedup(true);
 
         // Execute queries for find employees for different organizations.
-        print("Following people are 'GridGain' employees: ", qry.execute("GridGain").get());
-        print("Following people are 'Other' employees: ", qry.execute("Other").get());
+        print("Following people are 'GridGain' employees (SQL join): ", qry.execute("GridGain").get());
+        print("Following people are 'Other' employees (SQL join): ", qry.execute("Other").get());
     }
 
     /**
@@ -170,7 +170,7 @@ public class SqlQueryExample {
         Collection<List<?>> res = qry1.execute().get();
 
         // Print persons' names and organizations' names.
-        printInline("Names of all employees and organizations they belong to:", res);
+        printInline("Names of all employees and organizations they belong to (SQL join):", res);
     }
 
     /**
@@ -201,7 +201,7 @@ public class SqlQueryExample {
         }
 
         // Print persons' names and organizations' names.
-        print("Average employee salary: " + (cnt > 0 ? (sum / cnt) : "n/a"));
+        print("Average employee salary (aggregation query): " + (cnt > 0 ? (sum / cnt) : "n/a"));
     }
 
     /**
@@ -223,7 +223,7 @@ public class SqlQueryExample {
                     "having avg(salary) > ?");
 
         // Execute query to get collection of rows.
-        printInline("Average salaries per Organization: ", qry.execute(500).get());
+        printInline("Average salaries per Organization (group-by query): ", qry.execute(500).get());
     }
 
     /**
@@ -290,6 +290,10 @@ public class SqlQueryExample {
 
         // Person projection.
         GridCacheProjection<PersonKey, Person> personCache = GridGain.grid().cache(PARTITIONED_CACHE_NAME);
+
+        // Clear caches before start.
+        personCache.globalClearAll();
+        orgCache.globalClearAll();
 
         // Organizations.
         Organization org1 = new Organization("GridGain");

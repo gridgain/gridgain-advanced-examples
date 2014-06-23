@@ -70,16 +70,20 @@ public class GroupIndexExample {
     private static void initialize() throws GridException, InterruptedException {
         GridCacheProjection<UUID, Organization> orgCache = GridGain.grid().cache(ORG_CACHE_NAME);
 
+        // Employees will be collocated with their organizations since
+        // Organizations are stored in replicated cache.
+        GridCacheProjection<UUID, Employee> employeeCache = GridGain.grid().cache(EMPLOYEES_CACHE_NAME);
+
+        // Clear caches before running example.
+        employeeCache.globalClearAll();
+        orgCache.globalClearAll();
+
         // Organizations.
         Organization org1 = new Organization("GridGain");
         Organization org2 = new Organization("Other");
 
         orgCache.put(org1.id, org1);
         orgCache.put(org2.id, org2);
-
-        // Employees will be collocated with their organizations since
-        // Organizations are stored in replicated cache.
-        GridCacheProjection<UUID, Employee> employeeCache = GridGain.grid().cache(EMPLOYEES_CACHE_NAME);
 
         // People.
         Employee p1 = new Employee("John", "Doe", org1.id, 2000);

@@ -46,6 +46,9 @@ public class CustomSqlFunctionsExample {
 
             GridCache<Integer, Integer> c = g.cache(null);
 
+            // Clear caches before running example.
+            c.globalClearAll();
+
             for (int i = 0; i < 10; i++)
                 c.put(r.nextInt(1000), r.nextInt(1000));
 
@@ -64,6 +67,7 @@ public class CustomSqlFunctionsExample {
         GridConfiguration c = new GridConfiguration();
 
         c.setLocalHost("127.0.0.1");
+        c.setPeerClassLoadingEnabled(true);
 
         GridCacheConfiguration cc = new GridCacheConfiguration();
 

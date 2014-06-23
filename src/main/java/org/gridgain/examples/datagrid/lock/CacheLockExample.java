@@ -51,6 +51,9 @@ public class CacheLockExample {
 
             final GridCache<Long, Long> cache = g.cache(CACHE_NAME);
 
+            // Clear caches before running example.
+            cache.globalClearAll();
+
             // Lock the key. Timeout 0 = infinite.
             cache.lock(1L, 0);
 

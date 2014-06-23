@@ -54,6 +54,9 @@ public class WeightedAverageExample {
 
             GridCacheProjection<Long, Segment> c = g.cache(CACHE_NAME);
 
+            // Clear caches before running example.
+            c.globalClearAll();
+
             // Calculate average weighted speed.
             GridCacheQuery<Entry<Long, Segment>> qry = c.queries().createSqlQuery(
                 Segment.class,

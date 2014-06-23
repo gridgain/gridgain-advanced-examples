@@ -41,6 +41,9 @@ public class CacheProjectionExample {
             // Get type-unaware cache.
             GridCache<Object, Object> cache = g.cache(CACHE_NAME);
 
+            // Clear caches before running example.
+            cache.globalClearAll();
+
             // Populate cache with Integer values.
             for (int i = 0; i < 10; i++)
                 cache.put(i, i);

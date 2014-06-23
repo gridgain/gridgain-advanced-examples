@@ -55,6 +55,9 @@ public class CacheFlagsExample {
         try (Grid g = GridGain.start(c)) {
             GridCache<String, Organization> cache = g.cache("test");
 
+            // Clear caches before running example.
+            cache.globalClearAll();
+
             // Create projection with SKIP_STORE flag enabled.
             GridCacheProjection<String, Organization> skipStorePrj = cache.flagsOn(GridCacheFlag.SKIP_STORE);
 

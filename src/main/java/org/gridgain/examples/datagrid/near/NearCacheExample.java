@@ -56,6 +56,9 @@ public class NearCacheExample {
 
                 final GridCache<Integer, Integer> cache = g.cache(CACHE_NAME);
 
+                // Clear caches before running example.
+                cache.globalClearAll();
+
                 // Find key for which this node is neither primary or backup.
                 // This will guarantee that the found key will end up in the near cache,
                 // and not in the main partitioned cache.

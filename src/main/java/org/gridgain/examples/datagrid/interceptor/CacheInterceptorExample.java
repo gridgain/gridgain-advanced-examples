@@ -42,6 +42,9 @@ public class CacheInterceptorExample {
         try (Grid g = GridGain.start(configuration())) {
             GridCache<Integer, Integer> c = g.cache(null);
 
+            // Clear caches before running example.
+            c.globalClearAll();
+
             Integer val = c.get(1);
 
             if (val != null)
