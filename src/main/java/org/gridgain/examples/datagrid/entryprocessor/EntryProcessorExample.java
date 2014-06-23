@@ -60,10 +60,10 @@ public class EntryProcessorExample {
             final String orgName = "Other";
 
             // Output employees for a given organization.
-            GridCache<Long, Person> cache = GridGain.grid().cache(PARTITIONED_CACHE_NAME);
+            GridCache<PersonKey, Person> cache = GridGain.grid().cache(PARTITIONED_CACHE_NAME);
 
             // Create query which joins on 2 types to select people for a specific organization.
-            GridCacheQuery<Map.Entry<Long, Person>> qry =
+            GridCacheQuery<Map.Entry<PersonKey, Person>> qry =
                 cache.queries().createSqlQuery(Person.class,
                     "from \"partitioned\".Person, \"replicated\".Organization " +
                         "where Person.orgId = Organization.id " +
@@ -73,14 +73,14 @@ public class EntryProcessorExample {
             System.out.println("Initial salaries:");
 
             // Execute query for find employees for organization.
-            for (Entry<Long, Person> p : qry.execute(orgName).get())
-                System.out.println("Person: " + p);
+            for (Entry<PersonKey, Person> p : qry.execute(orgName).get())
+                System.out.println("Person: " + p.getValue());
 
             // Increase salary for a company employees by 10%.
             // 1. Execute query to get the list of Employee IDs.
             // Create query to get IDs of all employees.
             GridCacheQuery<List<?>> qry1 = cache.queries().createSqlFieldsQuery(
-                "select Person.id from \"partitioned\".Person, " +
+                "select Person.id, Organization.id from \"partitioned\".Person, " +
                     "\"replicated\".Organization where Person.orgId = Organization.id " +
                     "and lower(Organization.name) = lower(?)").enableDedup(true);
 
@@ -88,20 +88,20 @@ public class EntryProcessorExample {
             // case each row will have one element with full name of an employees.
             Collection<List<?>> res = qry1.execute(orgName).get();
 
-            Set<Long> ids = new HashSet<>(res.size(), 1.0f);
+            Set<PersonKey> ids = new HashSet<>(res.size(), 1.0f);
 
             for (List<?> l : res)
-                ids.add((Long)l.get(0));
+                ids.add(new PersonKey((Long)l.get(0), (Long)l.get(1)));
 
             System.out.println();
             System.out.println("Will update salaries for a given organizaion by 10%.");
 
-            g.<Long, Person>cache(PARTITIONED_CACHE_NAME).transformAll(ids, new GridClosure<Person, Person>() {
+            g.<PersonKey, Person>cache(PARTITIONED_CACHE_NAME).transformAll(ids, new GridClosure<Person, Person>() {
                 @Override public Person apply(Person person) {
-                    System.out.println("Transform closure has been called for person: " + person.getFirstName());
-
                     if (person == null)
                         return null;
+
+                    System.out.println("Transform closure has been called for person: " + person.getFirstName());
 
                     // Need to return new instance.
                     Person res = new Person(person);
@@ -116,7 +116,7 @@ public class EntryProcessorExample {
             System.out.println("Salaries after update:");
 
             // Execute query one more time to print salaries after update.
-            for (Entry<Long, Person> p : qry.execute("Other").get())
+            for (Entry<PersonKey, Person> p : qry.execute("Other").get())
                 System.out.println("Person: " + p);
         }
     }
@@ -132,7 +132,7 @@ public class EntryProcessorExample {
         GridCacheProjection<Long, Organization> orgCache = GridGain.grid().cache(REPLICATED_CACHE_NAME);
 
         // Person projection.
-        GridCacheProjection<Long, Person> personCache = GridGain.grid().cache(PARTITIONED_CACHE_NAME);
+        GridCacheProjection<PersonKey, Person> personCache = GridGain.grid().cache(PARTITIONED_CACHE_NAME);
 
         // Organizations.
         Organization org1 = new Organization("GridGain");
@@ -151,12 +151,12 @@ public class EntryProcessorExample {
 
         // Note that in this example we use custom affinity key for Person objects
         // to ensure that all persons are collocated with their organizations.
-        personCache.put(p1.getId(), p1);
-        personCache.put(p2.getId(), p2);
-        personCache.put(p3.getId(), p3);
-        personCache.put(p4.getId(), p4);
-        personCache.put(p5.getId(), p5);
-        personCache.put(p6.getId(), p6);
+        personCache.put(p1.key(), p1);
+        personCache.put(p2.key(), p2);
+        personCache.put(p3.key(), p3);
+        personCache.put(p4.key(), p4);
+        personCache.put(p5.key(), p5);
+        personCache.put(p6.key(), p6);
 
         // Wait 1 second to be sure that all nodes processed put requests.
         Thread.sleep(1000);

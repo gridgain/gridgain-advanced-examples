@@ -65,10 +65,6 @@ public class SqlQueryExample {
             // Example for SQL-based querying employees for a given organization (includes SQL join).
             sqlQueryWithJoin();
 
-            // Example for SQL-based querying with custom remote and local reducers
-            // to calculate average salary among all employees within a company.
-            sqlQueryWithReducers();
-
             // Example for SQL-based querying with custom remote transformer to make sure
             // that only required data without any overhead is returned to caller.
             sqlQueryWithTransformer();
@@ -99,10 +95,10 @@ public class SqlQueryExample {
      * @throws GridException In case of error.
      */
     private static void sqlQuery() throws GridException {
-        GridCache<Long, Person> cache = GridGain.grid().cache(PARTITIONED_CACHE_NAME);
+        GridCache<PersonKey, Person> cache = GridGain.grid().cache(PARTITIONED_CACHE_NAME);
 
         // Create query which selects salaries based on range.
-        GridCacheQuery<Entry<Long, Person>> qry = cache.queries().createSqlQuery(
+        GridCacheQuery<Entry<PersonKey, Person>> qry = cache.queries().createSqlQuery(
             Person.class,
             "salary > ? and salary <= ?").enableDedup(true);
 
@@ -120,10 +116,10 @@ public class SqlQueryExample {
      * @throws GridException In case of error.
      */
     private static void sqlQueryWithJoin() throws GridException {
-        GridCache<Long, Person> cache = GridGain.grid().cache(PARTITIONED_CACHE_NAME);
+        GridCache<PersonKey, Person> cache = GridGain.grid().cache(PARTITIONED_CACHE_NAME);
 
         // Create query which joins on 2 types to select people for a specific organization.
-        GridCacheQuery<Map.Entry<Long, Person>> qry =
+        GridCacheQuery<Map.Entry<PersonKey, Person>> qry =
             cache.queries().createSqlQuery(Person.class,
                 "from \"partitioned\".Person, \"replicated\".Organization " +
                 "where Person.orgId = Organization.id " +
@@ -174,7 +170,7 @@ public class SqlQueryExample {
         Collection<List<?>> res = qry1.execute().get();
 
         // Print persons' names and organizations' names.
-        print("Names of all employees and organizations they belong to:", res);
+        printInline("Names of all employees and organizations they belong to:", res);
     }
 
     /**
@@ -219,40 +215,15 @@ public class SqlQueryExample {
 
         // Create query to get sum of salaries and number of summed rows
         // grouping results by organization name.
-        GridCacheQuery<List<?>> qry1 = cache.queries().createSqlFieldsQuery(
-            "select sum(salary), count(salary), Organization.name " +
+        GridCacheQuery<List<?>> qry = cache.queries().createSqlFieldsQuery(
+            "select avg(salary), Organization.name " +
                 "from \"partitioned\".Person, \"replicated\".Organization " +
-                "where Person.orgId = Organization.Id group by Organization.name");
+                "where Person.orgId = Organization.Id " +
+                "group by Organization.name " +
+                    "having avg(salary) > ?");
 
         // Execute query to get collection of rows.
-        Collection<List<?>> res = qry1.execute().get();
-
-        Map<String, GridBiTuple<Double, Long>> map = new HashMap<>();
-
-        for (List<?> row : res) {
-            // Skip results from nodes without data.
-            if (row.get(0) != null) {
-                String orgName = (String)row.get(2);
-
-                GridBiTuple<Double, Long> t = map.get(orgName);
-
-                if (t == null)
-                    map.put(orgName, t = new GridBiTuple<>(0.0, 0L));
-
-                t.set1(t.get1() + (Double)row.get(0));
-                t.set2(t.get2() + (Long)row.get(1));
-            }
-        }
-
-        // Print persons' names and organizations' names.
-        print("Average employee salary in each organization: ");
-
-        for (Entry<String, GridBiTuple<Double, Long>> e : map.entrySet()) {
-            print(e.getKey() + " " +
-                (e.getValue().get2() != 0 ?
-                    e.getValue().get1() / e.getValue().get2() :
-                    "n/a"));
-        }
+        printInline("Average salaries per Organization: ", qry.execute(500).get());
     }
 
     /**
@@ -276,57 +247,11 @@ public class SqlQueryExample {
     }
 
     /**
-     * Example for SQL queries with custom remote and local reducers to calculate
-     * average salary for a specific organization.
-     *
-     * @throws GridException In case of error.
-     */
-    private static void sqlQueryWithReducers() throws GridException {
-        GridCacheProjection<Long, Person> cache = GridGain.grid().cache(PARTITIONED_CACHE_NAME);
-
-        // Calculate average of salary of all persons in GridGain.
-        GridCacheQuery<Entry<Long, Person>> qry = cache.queries().createSqlQuery(
-            Person.class,
-            "from \"partitioned\".Person, \"replicated\".Organization " +
-                "where Person.orgId = Organization.id and lower(Organization.name) = lower(?)");
-
-        Collection<GridBiTuple<Double, Integer>> res = qry.execute(
-            new GridReducer<Map.Entry<Long, Person>, GridBiTuple<Double, Integer>>() {
-                private double sum;
-
-                private int cnt;
-
-                @Override public boolean collect(Map.Entry<Long, Person> e) {
-                    sum += e.getValue().getSalary();
-
-                    cnt++;
-
-                    // Continue collecting.
-                    return true;
-                }
-
-                @Override public GridBiTuple<Double, Integer> reduce() {
-                    return new GridBiTuple<>(sum, cnt);
-                }
-            }, "GridGain").get();
-
-        double sum = 0.0d;
-        int cnt = 0;
-
-        for (GridBiTuple<Double, Integer> t : res) {
-            sum += t.get1();
-            cnt += t.get2();
-        }
-
-        double avg = sum / cnt;
-
-        // Calculate average salary for a specific organization.
-        print("Average salary for 'GridGain' employees: " + avg);
-    }
-
-    /**
      * Example for SQL queries with custom transformer to allow passing
      * only the required set of fields back to caller.
+     * <p>
+     * In this example, we are simply returning "firstName + lastName" string
+     * instead of passing the whole Person object back.
      *
      * @throws GridException In case of error.
      */
@@ -364,7 +289,7 @@ public class SqlQueryExample {
         GridCacheProjection<Long, Organization> orgCache = GridGain.grid().cache(REPLICATED_CACHE_NAME);
 
         // Person projection.
-        GridCacheProjection<Long, Person> personCache = GridGain.grid().cache(PARTITIONED_CACHE_NAME);
+        GridCacheProjection<PersonKey, Person> personCache = GridGain.grid().cache(PARTITIONED_CACHE_NAME);
 
         // Organizations.
         Organization org1 = new Organization("GridGain");
@@ -383,15 +308,26 @@ public class SqlQueryExample {
 
         // Note that in this example we use custom affinity key for Person objects
         // to ensure that all persons are collocated with their organizations.
-        personCache.put(p1.getId(), p1);
-        personCache.put(p2.getId(), p2);
-        personCache.put(p3.getId(), p3);
-        personCache.put(p4.getId(), p4);
-        personCache.put(p5.getId(), p5);
-        personCache.put(p6.getId(), p6);
+        personCache.put(p1.key(), p1);
+        personCache.put(p2.key(), p2);
+        personCache.put(p3.key(), p3);
+        personCache.put(p4.key(), p4);
+        personCache.put(p5.key(), p5);
+        personCache.put(p6.key(), p6);
 
         // Wait 1 second to be sure that all nodes processed put requests.
         Thread.sleep(1000);
+    }
+
+    /**
+     * @param msg Message.
+     * @param col Query results.
+     */
+    private static void printInline(String msg, Iterable<?> col) {
+        if (msg != null)
+            System.out.println(">>> " + msg);
+
+        printInline(col);
     }
 
     /**
@@ -419,6 +355,16 @@ public class SqlQueryExample {
             else
                 System.out.println(">>>     " + next);
         }
+    }
+
+    /**
+     * Prints collection items.
+     *
+     * @param col Collection.
+     */
+    private static void printInline(Iterable<?> col) {
+        for (Object next : col)
+            System.out.println(">>>     " + next);
     }
 
     /**

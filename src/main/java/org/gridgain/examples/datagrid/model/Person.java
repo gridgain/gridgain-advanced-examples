@@ -57,6 +57,9 @@ public class Person implements Serializable {
     @GridCacheQuerySqlField
     private double salary;
 
+    /** Affinity-aware key. */
+    private transient PersonKey key;
+
     /**
      * Constructs person record.
      *
@@ -88,6 +91,16 @@ public class Person implements Serializable {
         lastName = p.getLastName();
         resume = p.getResume();
         salary = p.getSalary();
+    }
+
+    /**
+     * @return Affinity-aware person key.
+     */
+    public PersonKey key() {
+        if (key == null)
+            key = new PersonKey(id, orgId);
+
+        return key;
     }
 
     public long getId() {
