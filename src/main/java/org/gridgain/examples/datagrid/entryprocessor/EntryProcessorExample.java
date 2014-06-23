@@ -106,7 +106,8 @@ public class EntryProcessorExample {
                     // Need to return new instance.
                     Person res = new Person(person);
 
-                    res.setSalary(res.getSalary() * 1.1);
+                    // Do not use * 1.1 to prevent rounding errors.
+                    res.setSalary(res.getSalary() + res.getSalary() / 10);
 
                     return res;
                 }
