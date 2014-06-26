@@ -53,14 +53,14 @@ public class CacheDataLoaderExample {
             // Clear caches before running example.
             g.cache(CACHE_NAME).globalClearAll();
 
-            try (GridDataLoader<Integer, String> ldr = g.dataLoader(CACHE_NAME)) {
+            try (GridDataLoader<Integer, Integer> ldr = g.dataLoader(CACHE_NAME)) {
                 // Configure loader.
                 ldr.perNodeBufferSize(1024);
 
                 long start = System.currentTimeMillis();
 
                 for (int i = 0; i < ENTRY_COUNT; i++) {
-                    ldr.addData(i, Integer.toString(i));
+                    ldr.addData(i, i);
 
                     // Print out progress while loading cache.
                     if (i > 0 && i % 10000 == 0)

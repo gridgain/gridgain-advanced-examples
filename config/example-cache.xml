@@ -39,6 +39,8 @@
         <!-- Set to local host address just for examples. -->
         <property name="localHost" value="127.0.0.1"/>
 
+        <property name="networkTimeout" value="8000"/>
+
         <!-- Set to true to enable grid-aware class loading for examples, default is false. -->
         <property name="peerClassLoadingEnabled" value="true"/>
 
