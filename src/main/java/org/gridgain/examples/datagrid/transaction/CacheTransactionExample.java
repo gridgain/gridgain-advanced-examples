@@ -60,69 +60,50 @@ public class CacheTransactionExample {
 
             // Initialize.
             cache.putx(1L, new Account(1, 100));
-            cache.putx(2L, new Account(2, 500));
 
             System.out.println();
-            System.out.println(">>> Accounts before transfer: ");
+            System.out.println(">>> Account before deposit: ");
             System.out.println(">>> " + cache.get(1L));
-            System.out.println(">>> " + cache.get(2L));
 
-            // Transfer $200 from account2 to account1 within a transaction.
-            transfer(2, 1, 200);
+            // Deposit $200 to account within a transaction.
+            deposit(1, 200);
 
             System.out.println();
-            System.out.println(">>> Accounts after transfer: ");
+            System.out.println(">>> Account after deposit: ");
             System.out.println(">>> " + cache.get(1L));
-            System.out.println(">>> " + cache.get(2L));
 
             System.out.println(">>> Cache transaction example finished.");
         }
     }
 
     /**
-     * Transfer money from one account to another.
+     * Deposit money to the account with given ID.
      *
-     * @param fromId 'From' account ID.
      * @param toId 'To' account ID.
      * @param amount Amount to transfer.
      * @throws GridException If failed.
      */
-    private static void transfer(long fromId, long toId, double amount) throws GridException {
-        if (fromId == toId)
-            return;
-
+    private static void deposit(long toId, double amount) throws GridException {
         // Clone every object we get from cache, so we can freely update it.
         GridCacheProjection<Long, Account> cache = GridGain.grid().<Long, Account>cache(CACHE_NAME).flagsOn(CLONE);
 
         try (GridCacheTx tx = cache.txStart(PESSIMISTIC, REPEATABLE_READ)) {
-            Account fromAcct;
-            Account toAcct;
-
             // In PESSIMISTIC mode cache objects are locked
             // automatically upon access within a transaction.
-            // To avoid deadlocks, we always lock account with smaller ID first.
-            if (fromId < toId) {
-                fromAcct = cache.get(fromId); // Lock 'from' account first.
-                toAcct = cache.get(toId);
-            }
-            else {
-                toAcct = cache.get(toId); // Lock 'to' account first.
-                fromAcct = cache.get(fromId);
-            }
+            Account acct = cache.get(toId); // Lock 'from' account first.
 
-            // Debit 'from' account and credit 'to' account.
-            fromAcct.update(-amount);
-            toAcct.update(amount);
+            assert acct != null;
 
-            // Store updated accounts in cache.
-            cache.putx(fromId, fromAcct);
-            cache.putx(toId, toAcct);
+            acct.update(amount);
+
+            // Store updated account in cache.
+            cache.putx(toId, acct);
 
             tx.commit();
         }
 
         System.out.println();
-        System.out.println(">>> Transferred amount: $" + amount);
+        System.out.println(">>> Deposit amount: $" + amount);
     }
 
     /**
