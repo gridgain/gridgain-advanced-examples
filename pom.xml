@@ -26,7 +26,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>1.7</maven.compiler.source>
         <maven.compiler.target>1.7</maven.compiler.target>
-        <gridgain.version>6.1.8</gridgain.version>
+        <gridgain.version>6.2.0-rc2</gridgain.version>
         <mongodb.version>RELEASE</mongodb.version>
         <embedded.mongo.version>RELEASE</embedded.mongo.version>
         <morphia.version>RELEASE</morphia.version>
@@ -49,6 +49,12 @@
         <dependency>
             <groupId>org.gridgain</groupId>
             <artifactId>gridgain-hibernate</artifactId>
+            <version>${gridgain.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.gridgain</groupId>
+            <artifactId>gridgain-log4j</artifactId>
             <version>${gridgain.version}</version>
         </dependency>
 
