@@ -21,61 +21,60 @@
 
 package org.gridgain.examples.events;
 
-import org.gridgain.examples.datagrid.*;
-import org.gridgain.grid.*;
-import org.gridgain.grid.events.*;
-import org.gridgain.grid.lang.*;
+import org.apache.ignite.*;
+import org.apache.ignite.events.*;
+import org.apache.ignite.lang.*;
+import org.gridgain.examples.*;
 
 import java.util.*;
 
-import static org.gridgain.grid.events.GridEventType.*;
+import static org.apache.ignite.events.EventType.*;
 
 /**
  * Demonstrates event consume API that allows to register event listeners on remote nodes.
  * <p>
  * Remote nodes should always be started with special configuration file which
- * enables P2P class loading: {@code 'ggstart.{sh|bat} ADVANCED-EXAMPLES-DIR/config/example-cache.xml'}
- * or {@link CacheExampleNodeStartup} can be used.
+ * enables P2P class loading: {@code 'ggstart.{sh|bat} ADVANCED-EXAMPLES-DIR/config/example-ignite.xml'}
+ * or {@link ExampleNodeStartup} can be used.
  */
 public class EventsExample {
     /** Cache name. */
-    private static final String CACHE_NAME = "partitioned";
+    private static final String CACHE_NAME = EventsExample.class.getSimpleName();
 
     /**
      * Executes example.
      *
      * @param args Command line arguments, none required.
-     * @throws GridException If example execution failed.
      */
     public static void main(String[] args) throws Exception {
-        try (Grid grid = GridGain.start("config/example-cache.xml")) {
-            // Listen to events happening on local node.
-            localListen();
+        try (Ignite ignite = Ignition.start("config/example-ignite.xml")) {
+            try (IgniteCache<Integer, String> cache = ignite.createCache(CACHE_NAME)) {
+                // Listen to events happening on local node.
+                localListen();
 
-            // Wait for a while while callback is notified about remaining puts.
-            Thread.sleep(1000);
+                // Wait for a while while callback is notified about remaining puts.
+                Thread.sleep(1000);
 
-            // Listen to events happening on all grid nodes.
-            remoteListen();
+                // Listen to events happening on all grid nodes.
+                remoteListen();
 
-            // Wait for a while while callback is notified about remaining puts.
-            Thread.sleep(1000);
+                // Wait for a while while callback is notified about remaining puts.
+                Thread.sleep(1000);
+            }
         }
     }
 
     /**
      * Listen to events that happen only on local node.
-     *
-     * @throws GridException If failed.
      */
     private static void localListen() throws Exception {
         System.out.println();
         System.out.println(">>> Local event listener example.");
 
-        Grid g = GridGain.grid();
+        Ignite ignite = Ignition.ignite();
 
-        GridPredicate<GridCacheEvent> lsnr = new GridPredicate<GridCacheEvent>() {
-            @Override public boolean apply(GridCacheEvent evt) {
+        IgnitePredicate<CacheEvent> lsnr = new IgnitePredicate<CacheEvent>() {
+            @Override public boolean apply(CacheEvent evt) {
                 System.out.println("Received cache event [evt=" + evt.name() + ", cacheName=" + evt.cacheName() +
                     ", key=" + evt.key() + ']');
 
@@ -84,29 +83,27 @@ public class EventsExample {
         };
 
         // Register event listener for all local task execution events.
-        g.events().localListen(lsnr, EVT_CACHE_OBJECT_PUT);
+        ignite.events().localListen(lsnr, EVT_CACHE_OBJECT_PUT);
 
         // Generate cache events.
         for (int i = 0; i < 10; i++)
-            g.cache(CACHE_NAME).put(i, String.valueOf(i));
+            ignite.cache(CACHE_NAME).put(i, String.valueOf(i));
 
         // Unsubscribe local task event listener.
-        g.events().stopLocalListen(lsnr);
+        ignite.events().stopLocalListen(lsnr);
     }
 
     /**
      * Listen to events coming from all grid nodes.
-     *
-     * @throws GridException If failed.
      */
-    private static void remoteListen() throws GridException {
+    private static void remoteListen() {
         System.out.println();
         System.out.println(">>> Remote event listener example.");
 
         // This optional local callback is called for each event notification
         // that passed remote predicate listener.
-        GridBiPredicate<UUID, GridCacheEvent> locLsnr = new GridBiPredicate<UUID, GridCacheEvent>() {
-            @Override public boolean apply(UUID nodeId, GridCacheEvent evt) {
+        IgniteBiPredicate<UUID, CacheEvent> locLsnr = new IgniteBiPredicate<UUID, CacheEvent>() {
+            @Override public boolean apply(UUID nodeId, CacheEvent evt) {
                 System.out.println("Received cache event [evt=" + evt.name() + ", cacheName=" + evt.cacheName() +
                     ", key=" + evt.key() + ']');
 
@@ -115,8 +112,8 @@ public class EventsExample {
         };
 
         // Remote filter which only accepts tasks whose name begins with "good-task" prefix.
-        GridPredicate<GridCacheEvent> rmtLsnr = new GridPredicate<GridCacheEvent>() {
-            @Override public boolean apply(GridCacheEvent evt) {
+        IgnitePredicate<CacheEvent> rmtLsnr = new IgnitePredicate<CacheEvent>() {
+            @Override public boolean apply(CacheEvent evt) {
                 Integer key = evt.key();
 
                 if (key != null && key % 2 == 0) {
@@ -129,18 +126,15 @@ public class EventsExample {
             }
         };
 
-        Grid g = GridGain.grid();
+        Ignite ignite = Ignition.ignite();
 
         // Register event listeners on all nodes to listen for task events.
-        GridFuture<UUID> fut = g.events().remoteListen(locLsnr, rmtLsnr, EVT_CACHE_OBJECT_PUT);
-
-        // Wait until event listeners are subscribed on all nodes.
-        UUID lsnrId = fut.get();
+        UUID lsnrId = ignite.events().remoteListen(locLsnr, rmtLsnr, EVT_CACHE_OBJECT_PUT);
 
         // Generate cache events.
         for (int i = 0; i < 10; i++)
-            g.cache(CACHE_NAME).put(i, String.valueOf(i));
+            ignite.cache(CACHE_NAME).put(i, String.valueOf(i));
 
-        g.events().stopRemoteListen(lsnrId);
+        ignite.events().stopRemoteListen(lsnrId);
     }
 }

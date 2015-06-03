@@ -21,13 +21,13 @@
 
 package org.gridgain.examples.lifecycle;
 
-import org.gridgain.grid.*;
-import org.gridgain.grid.resources.*;
-
-import static org.gridgain.grid.GridLifecycleEventType.*;
+import org.apache.ignite.*;
+import org.apache.ignite.configuration.*;
+import org.apache.ignite.lifecycle.*;
+import org.apache.ignite.resources.*;
 
 /**
- * This example shows how to provide your own {@link GridLifecycleBean} implementation
+ * This example shows how to provide your own {@link LifecycleBean} implementation
  * to be able to hook into GridGain lifecycle. The {@link LifecycleExampleBean} bean
  * will output occurred lifecycle events to the console.
  */
@@ -36,21 +36,20 @@ public final class LifecycleBeanExample {
      * Executes example.
      *
      * @param args Command line arguments, none required.
-     * @throws GridException If example execution failed.
      */
-    public static void main(String[] args) throws GridException {
+    public static void main(String[] args) {
         System.out.println();
         System.out.println(">>> Lifecycle example started.");
 
         // Create new configuration.
-        GridConfiguration cfg = new GridConfiguration();
+        IgniteConfiguration cfg = new IgniteConfiguration();
 
         LifecycleExampleBean bean = new LifecycleExampleBean();
 
         // Provide lifecycle bean to configuration.
         cfg.setLifecycleBeans(bean);
 
-        try (Grid g  = GridGain.start(cfg)) {
+        try (Ignite ignite = Ignition.start(cfg)) {
             // Make sure that lifecycle bean was notified about grid startup.
             assert bean.isStarted();
         }
@@ -60,26 +59,26 @@ public final class LifecycleBeanExample {
     }
 
     /**
-     * Simple {@link GridLifecycleBean} implementation that outputs event type when it is occurred.
+     * Simple {@link LifecycleBean} implementation that outputs event type when it is occurred.
      */
-    public static class LifecycleExampleBean implements GridLifecycleBean {
+    public static class LifecycleExampleBean implements LifecycleBean {
         /** Auto-inject grid instance. */
-        @GridInstanceResource
-        private Grid grid;
+        @IgniteInstanceResource
+        private Ignite ignite;
 
         /** Started flag. */
         private boolean isStarted;
 
         /** {@inheritDoc} */
-        @Override public void onLifecycleEvent(GridLifecycleEventType evt) {
+        @Override public void onLifecycleEvent(LifecycleEventType evt) {
             System.out.println();
             System.out.println(">>> Grid lifecycle event occurred: " + evt);
-            System.out.println(">>> Grid name: " + grid.name());
+            System.out.println(">>> Grid name: " + ignite.name());
 
-            if (evt == AFTER_GRID_START) {
+            if (evt == LifecycleEventType.AFTER_NODE_START) {
                 isStarted = true;
             }
-            else if (evt == AFTER_GRID_STOP) {
+            else if (evt == LifecycleEventType.AFTER_NODE_STOP) {
                 isStarted = false;
             }
         }

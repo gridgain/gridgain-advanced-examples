@@ -7,11 +7,10 @@
 
 package org.gridgain.examples.messaging;
 
-import org.gridgain.examples.datagrid.*;
-import org.gridgain.grid.*;
-import org.gridgain.grid.cache.datastructures.*;
-import org.gridgain.grid.lang.*;
-import org.gridgain.grid.util.lang.*;
+import org.apache.ignite.*;
+import org.apache.ignite.cluster.*;
+import org.apache.ignite.lang.*;
+import org.gridgain.examples.*;
 
 import java.util.*;
 
@@ -19,13 +18,10 @@ import java.util.*;
  * Example that demonstrates how to exchange messages between nodes.
  * <p>
  * Remote nodes should always be started with special configuration file which
- * enables P2P class loading: {@code 'ggstart.{sh|bat} ADVANCED-EXAMPLES-DIR/config/example-cache.xml'}
- * or {@link CacheExampleNodeStartup} can be used.
+ * enables P2P class loading: {@code 'ggstart.{sh|bat} ADVANCED-EXAMPLES-DIR/config/example-ignite.xml'}
+ * or {@link ExampleNodeStartup} can be used.
  */
 public final class MessagingCountDownLatchExample {
-    /** Cache name. */
-    private static final String CACHE_NAME = "partitioned_tx";
-
     /** Latch name. */
     private static final String LATCH_NAME = "MessageLatch";
 
@@ -36,35 +32,32 @@ public final class MessagingCountDownLatchExample {
      * Executes example.
      *
      * @param args Command line arguments, none required.
-     * @throws GridException If example execution failed.
      */
     public static void main(String[] args) throws Exception {
-        try (Grid g = GridGain.start("config/example-cache.xml")) {
+        try (Ignite ignite = Ignition.start("config/example-ignite.xml")) {
             System.out.println();
             System.out.println(">>> Messaging count down latch example started.");
 
-            // Projection for remote nodes.
-            GridProjection rmtPrj = g.forRemotes();
-
-            GridCacheDataStructures dataStructures = g.cache(CACHE_NAME).dataStructures();
+            // Cluster group for remote nodes.
+            ClusterGroup remotes = ignite.cluster().forRemotes();
 
             int msgCnt = 20;
 
             // Register listeners on all grid nodes.
-            UUID listenId = startListening(g, rmtPrj);
+            UUID listenId = startListening(ignite, remotes);
 
-            GridCacheCountDownLatch latch = dataStructures.countDownLatch(
+            IgniteCountDownLatch latch = ignite.countDownLatch(
                 LATCH_NAME,
                 msgCnt,
                 /*auto delete*/false,
                 /*create*/true);
 
-            try {
-                assert latch != null;
+            assert latch != null;
 
+            try {
                 // Send unordered messages to all remote nodes.
                 for (int i = 0; i < msgCnt; i++)
-                    rmtPrj.forRandom().message().send(TOPIC, Integer.toString(i));
+                    ignite.message(remotes.forRandom()).send(TOPIC, Integer.toString(i));
 
                 System.out.println(">>> Finished sending messages. Waiting for all messages being processed.");
 
@@ -74,9 +67,9 @@ public final class MessagingCountDownLatchExample {
                     "Check output on all nodes for message printouts.");
             }
             finally {
-                dataStructures.removeCountDownLatch(LATCH_NAME);
+                latch.close();
 
-                rmtPrj.message().stopRemoteListen(listenId);
+                ignite.message(remotes).stopRemoteListen(listenId);
             }
         }
     }
@@ -84,29 +77,23 @@ public final class MessagingCountDownLatchExample {
     /**
      * Start listening to messages on all grid nodes within passed in projection.
      *
-     * @param prj Grid projection.
-     * @throws GridException If failed.
+     * @param ignite Ignite.
+     * @param grp Cluster group.
      */
-    private static UUID startListening(final Grid g, GridProjection prj) throws GridException {
+    private static UUID startListening(final Ignite ignite, ClusterGroup grp) {
         // Add ordered message listener.
-        return prj.message().remoteListen(TOPIC, new GridBiPredicate<UUID, String>() {
+        return ignite.message(grp).remoteListen(TOPIC, new IgniteBiPredicate<UUID, String>() {
             @Override public boolean apply(UUID nodeId, String msg) {
-                try {
-                    System.out.println("Received message [msg=" + msg + ", fromNodeId=" + nodeId + ']');
+                System.out.println("Received message [msg=" + msg + ", fromNodeId=" + nodeId + ']');
 
-                    GridCacheCountDownLatch latch = g.cache(CACHE_NAME).dataStructures().countDownLatch(
-                        LATCH_NAME, 0, false, false);
+                IgniteCountDownLatch latch = ignite.countDownLatch(LATCH_NAME, 0, false, false);
 
-                    assert latch != null;
+                assert latch != null;
 
-                    latch.countDown();
+                latch.countDown();
 
-                    return true; // Return true to continue listening.
-                }
-                catch (GridException e) {
-                    throw new GridClosureException(e);
-                }
+                return true; // Return true to continue listening.
             }
-        }).get();
+        });
     }
 }

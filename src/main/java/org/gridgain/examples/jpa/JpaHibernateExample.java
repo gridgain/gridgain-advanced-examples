@@ -21,7 +21,7 @@
 
 package org.gridgain.examples.jpa;
 
-import org.gridgain.grid.*;
+import org.apache.ignite.*;
 import org.hibernate.*;
 import org.hibernate.cache.spi.access.AccessType;
 import org.hibernate.cfg.*;
@@ -85,11 +85,10 @@ public class JpaHibernateExample {
      * Executes example.
      *
      * @param args Command line arguments, none required.
-     * @throws GridException If example execution failed.
      */
     public static void main(String[] args) throws Exception {
         // Start the GridGain node, run the example, and stop the node when finished.
-        try (Grid grid = GridGain.start(JpaHibernateExampleNodeStartup.configuration())) {
+        try (Ignite ignite = Ignition.start(JpaHibernateExampleNodeStartup.configuration())) {
             // We use a single session factory, but create a dedicated session
             // for each transaction or query. This way we ensure that L1 cache
             // is not used (L1 cache has per-session scope only).

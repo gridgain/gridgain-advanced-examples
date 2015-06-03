@@ -21,131 +21,130 @@
 
 package org.gridgain.examples.datagrid.query;
 
-import org.gridgain.examples.datagrid.*;
+import org.apache.ignite.*;
+import org.apache.ignite.cache.*;
+import org.apache.ignite.cache.query.*;
+import org.apache.ignite.configuration.*;
+import org.gridgain.examples.*;
 import org.gridgain.examples.datagrid.model.*;
-import org.gridgain.grid.*;
-import org.gridgain.grid.cache.*;
-import org.gridgain.grid.cache.query.*;
-import org.gridgain.grid.lang.*;
 
 import java.util.*;
-import java.util.Map.*;
 
 /**
  * This example shows SQL query usage.
  * <p>
  * Remote nodes should always be started with special configuration file which
- * enables P2P class loading: {@code 'ggstart.{sh|bat} ADVANCED-EXAMPLES-DIR/config/example-cache.xml'}
- * or {@link CacheExampleNodeStartup} can be used.
+ * enables P2P class loading: {@code 'ggstart.{sh|bat} ADVANCED-EXAMPLES-DIR/config/example-ignite.xml'}
+ * or {@link ExampleNodeStartup} can be used.
  */
 public class SqlQueryExample {
-    /** Partitioned cache name (to store employees). */
-    private static final String PARTITIONED_CACHE_NAME = "partitioned";
-
     /** Replicated cache name (to store organizations). */
-    private static final String REPLICATED_CACHE_NAME = "replicated";
+    private static final String ORG_CACHE_NAME = SqlQueryExample.class.getSimpleName() + "-organizations";
+
+    /** Partitioned cache name (to store employees). */
+    private static final String PERSON_CACHE_NAME = SqlQueryExample.class.getSimpleName() + "-persons";
 
     /**
      * Executes example.
      *
      * @param args Command line arguments, none required.
-     * @throws GridException If example execution failed.
      */
     public static void main(String[] args) throws Exception {
-        try (Grid g = GridGain.start("config/example-cache.xml")) {
+        try (Ignite ignite = Ignition.start("config/example-ignite.xml")) {
             System.out.println();
             System.out.println(">>> Cache query example started.");
 
-            // Populate cache.
-            initialize();
+            CacheConfiguration<Long, Organization> orgCacheCfg = new CacheConfiguration<>(ORG_CACHE_NAME);
 
-            // Example for SQL-based querying employees based on salary ranges.
-            sqlQuery();
+            orgCacheCfg.setCacheMode(CacheMode.REPLICATED);
+            orgCacheCfg.setIndexedTypes(Long.class, Organization.class);
 
-            // Example for SQL-based querying employees for a given organization (includes SQL join).
-            sqlQueryWithJoin();
+            CacheConfiguration<PersonKey, Person> personCacheCfg = new CacheConfiguration<>(PERSON_CACHE_NAME);
 
-            // Example for SQL-based querying with custom remote transformer to make sure
-            // that only required data without any overhead is returned to caller.
-            sqlQueryWithTransformer();
+            personCacheCfg.setCacheMode(CacheMode.PARTITIONED);
+            personCacheCfg.setIndexedTypes(PersonKey.class, Person.class);
 
-            // Example for SQL-based fields queries that return only required
-            // fields instead of whole key-value pairs.
-            sqlFieldsQuery();
+            try (
+                IgniteCache<Long, Organization> orgCache = ignite.createCache(orgCacheCfg);
+                IgniteCache<PersonKey, Person> personCache = ignite.createCache(personCacheCfg)
+            ) {
+                // Populate cache.
+                initialize();
 
-            // Example for SQL-based fields queries that uses joins.
-            sqlFieldsQueryWithJoin();
+                // Example for SQL-based querying employees based on salary ranges.
+                sqlQuery();
 
-            // Example for query that uses aggregation.
-            aggregateQuery();
+                // Example for SQL-based querying employees for a given organization (includes SQL join).
+                sqlQueryWithJoin();
 
-            // Example for query that uses grouping.
-            groupByQuery();
+                // Example for SQL-based fields queries that return only required
+                // fields instead of whole key-value pairs.
+                sqlFieldsQuery();
 
-            // Full text query example.
-            textQuery();
+                // Example for SQL-based fields queries that uses joins.
+                sqlFieldsQueryWithJoin();
 
-            print("Cache query example finished.");
+                // Example for query that uses aggregation.
+                aggregateQuery();
+
+                // Example for query that uses grouping.
+                groupByQuery();
+
+                // Full text query example.
+                textQuery();
+
+                print("Cache query example finished.");
+            }
         }
     }
 
     /**
      * Example for SQL queries based on salary ranges.
-     *
-     * @throws GridException In case of error.
      */
-    private static void sqlQuery() throws GridException {
-        GridCache<PersonKey, Person> cache = GridGain.grid().cache(PARTITIONED_CACHE_NAME);
+    private static void sqlQuery() {
+        IgniteCache<PersonKey, Person> cache = Ignition.ignite().cache(PERSON_CACHE_NAME);
 
         // Create query which selects salaries based on range.
-        GridCacheQuery<Entry<PersonKey, Person>> qry = cache.queries().createSqlQuery(
-            Person.class,
-            "salary > ? and salary <= ?").enableDedup(true);
+        SqlQuery<PersonKey, Person> qry = new SqlQuery<>(Person.class, "salary > ? and salary <= ?");
 
         // Execute queries for salary ranges.
-        print("People with salaries between 0 and 1000: ", qry.execute(0, 1000).get());
+        print("People with salaries between 0 and 1000: ", cache.query(qry.setArgs(0, 1000)).getAll());
 
-        print("People with salaries between 1000 and 2000: ", qry.execute(1000, 2000).get());
+        print("People with salaries between 1000 and 2000: ", cache.query(qry.setArgs(1000, 2000)).getAll());
 
-        print("People with salaries greater than 2000: ", qry.execute(2000, Integer.MAX_VALUE).get());
+        print("People with salaries greater than 2000: ", cache.query(qry.setArgs(2000, Integer.MAX_VALUE)).getAll());
     }
 
     /**
      * Example for SQL queries based on all employees working for a specific organization.
-     *
-     * @throws GridException In case of error.
      */
-    private static void sqlQueryWithJoin() throws GridException {
-        GridCache<PersonKey, Person> cache = GridGain.grid().cache(PARTITIONED_CACHE_NAME);
+    private static void sqlQueryWithJoin() {
+        IgniteCache<PersonKey, Person> cache = Ignition.ignite().cache(PERSON_CACHE_NAME);
 
         // Create query which joins on 2 types to select people for a specific organization.
-        GridCacheQuery<Map.Entry<PersonKey, Person>> qry =
-            cache.queries().createSqlQuery(Person.class,
-                "from \"partitioned\".Person, \"replicated\".Organization " +
+        SqlQuery<PersonKey, Person> qry = new SqlQuery<>(Person.class,
+                "from Person, \"" + ORG_CACHE_NAME + "\".Organization " +
                 "where Person.orgId = Organization.id " +
-                "and lower(Organization.name) = lower(?)").enableDedup(true);
+                "and lower(Organization.name) = lower(?)");
 
         // Execute queries for find employees for different organizations.
-        print("Following people are 'GridGain' employees (SQL join): ", qry.execute("GridGain").get());
-        print("Following people are 'Other' employees (SQL join): ", qry.execute("Other").get());
+        print("Following people are 'GridGain' employees (SQL join): ", cache.query(qry.setArgs("GridGain")).getAll());
+        print("Following people are 'Other' employees (SQL join): ", cache.query(qry.setArgs("Other")).getAll());
     }
 
     /**
      * Example for SQL-based fields queries that return only required
      * fields instead of whole key-value pairs.
-     *
-     * @throws GridException In case of error.
      */
-    private static void sqlFieldsQuery() throws GridException {
-        GridCache<?, ?> cache = GridGain.grid().cache(PARTITIONED_CACHE_NAME);
+    private static void sqlFieldsQuery() {
+        IgniteCache<?, ?> cache = Ignition.ignite().cache(PERSON_CACHE_NAME);
 
         // Create query to get names of all employees.
-        GridCacheQuery<List<?>> qry1 = cache.queries().createSqlFieldsQuery(
-            "select concat(firstName, ' ', lastName) from Person").enableDedup(true);
+        SqlFieldsQuery qry = new SqlFieldsQuery("select concat(firstName, ' ', lastName) from Person");
 
         // Execute query to get collection of rows. In this particular
         // case each row will have one element with full name of an employees.
-        Collection<List<?>> res = qry1.execute().get();
+        Collection<List<?>> res = cache.query(qry).getAll();
 
         // Print names.
         print("Names of all employees:", res);
@@ -154,20 +153,19 @@ public class SqlQueryExample {
     /**
      * Example for SQL-based fields queries that return only required
      * fields instead of whole key-value pairs.
-     *
-     * @throws GridException In case of error.
      */
-    private static void sqlFieldsQueryWithJoin() throws GridException {
-        GridCache<?, ?> cache = GridGain.grid().cache(PARTITIONED_CACHE_NAME);
+    private static void sqlFieldsQueryWithJoin() {
+        IgniteCache<?, ?> cache = Ignition.ignite().cache(PERSON_CACHE_NAME);
 
         // Create query to get names of all employees.
-        GridCacheQuery<List<?>> qry1 = cache.queries().createSqlFieldsQuery(
-            "select concat(firstName, ' ', lastName), Organization.name from \"partitioned\".Person, " +
-                "\"replicated\".Organization where Person.orgId = Organization.id").enableDedup(true);
+        SqlFieldsQuery qry = new SqlFieldsQuery(
+            "select concat(p.firstName, ' ', p.lastName), o.name " +
+            "from Person p, \"" + ORG_CACHE_NAME + "\".Organization o " +
+            "where p.orgId = o.id");
 
         // Execute query to get collection of rows. In this particular
         // case each row will have one element with full name of an employees.
-        Collection<List<?>> res = qry1.execute().get();
+        Collection<List<?>> res = cache.query(qry).getAll();
 
         // Print persons' names and organizations' names.
         printInline("Names of all employees and organizations they belong to (SQL join):", res);
@@ -176,18 +174,15 @@ public class SqlQueryExample {
     /**
      * Example for SQL-based fields queries that return only required
      * fields instead of whole key-value pairs.
-     *
-     * @throws GridException In case of error.
      */
-    private static void aggregateQuery() throws GridException {
-        GridCache<?, ?> cache = GridGain.grid().cache(PARTITIONED_CACHE_NAME);
+    private static void aggregateQuery() {
+        IgniteCache<?, ?> cache = Ignition.ignite().cache(PERSON_CACHE_NAME);
 
         // Create query to get sum of salaries and number of summed rows.
-        GridCacheQuery<List<?>> qry1 = cache.queries().createSqlFieldsQuery(
-            "select sum(salary), count(salary) from Person");
+        SqlFieldsQuery qry = new SqlFieldsQuery("select sum(salary), count(salary) from Person");
 
         // Execute query to get collection of rows.
-        Collection<List<?>> res = qry1.execute().get();
+        Collection<List<?>> res = cache.query(qry).getAll();
 
         double sum = 0;
         long cnt = 0;
@@ -207,94 +202,52 @@ public class SqlQueryExample {
     /**
      * Example for SQL-based fields queries that return only required
      * fields instead of whole key-value pairs.
-     *
-     * @throws GridException In case of error.
      */
-    private static void groupByQuery() throws GridException {
-        GridCache<?, ?> cache = GridGain.grid().cache(PARTITIONED_CACHE_NAME);
+    private static void groupByQuery() {
+        IgniteCache<?, ?> cache = Ignition.ignite().cache(PERSON_CACHE_NAME);
 
         // Create query to get salary averages grouped by organization name.
         // We don't need to perform any extra manual steps here, because
         // Person data is colocated based on organization IDs.
-        GridCacheQuery<List<?>> qry = cache.queries().createSqlFieldsQuery(
-            "select avg(salary), Organization.name " +
-                "from \"partitioned\".Person, \"replicated\".Organization " +
-                "where Person.orgId = Organization.Id " +
-                "group by Organization.name " +
-                    "having avg(salary) > ?");
+        SqlFieldsQuery qry = new SqlFieldsQuery(
+            "select avg(p.salary), o.name " +
+            "from Person p, \"" + ORG_CACHE_NAME + "\".Organization o " +
+            "where p.orgId = o.Id " +
+            "group by o.name " +
+            "having avg(p.salary) > ?");
 
         // Execute query to get collection of rows.
-        printInline("Average salaries per Organization (group-by query): ", qry.execute(500).get());
+        printInline("Average salaries per Organization (group-by query): ", cache.query(qry.setArgs(500)).getAll());
     }
 
     /**
      * Example for TEXT queries using LUCENE-based indexing of people's resumes.
-     *
-     * @throws GridException In case of error.
      */
-    private static void textQuery() throws GridException {
-        GridCache<Long, Person> cache = GridGain.grid().cache(PARTITIONED_CACHE_NAME);
+    private static void textQuery() {
+        IgniteCache<Long, Person> cache = Ignition.ignite().cache(PERSON_CACHE_NAME);
 
         //  Query for all people with "Master Degree" in their resumes.
-        GridCacheQuery<Map.Entry<Long, Person>> masters =
-            cache.queries().createFullTextQuery(Person.class, "Master");
+        TextQuery<Long, Person> masters = new TextQuery<>(Person.class, "Master");
 
         // Query for all people with "Bachelor Degree"in their resumes.
-        GridCacheQuery<Map.Entry<Long, Person>> bachelors =
-            cache.queries().createFullTextQuery(Person.class, "Bachelor");
+        TextQuery<Long, Person> bachelors = new TextQuery<>(Person.class, "Bachelor");
 
-        print("Following people have 'Master Degree' in their resumes: ", masters.execute().get());
-        print("Following people have 'Bachelor Degree' in their resumes: ", bachelors.execute().get());
-    }
-
-    /**
-     * Example for SQL queries with custom transformer to allow passing
-     * only the required set of fields back to caller.
-     * <p>
-     * In this example, we are simply returning "firstName + lastName" string
-     * instead of passing the whole Person object back.
-     *
-     * @throws GridException In case of error.
-     */
-    private static void sqlQueryWithTransformer() throws GridException {
-        GridCache<Long, Person> cache = GridGain.grid().cache(PARTITIONED_CACHE_NAME);
-
-        // Create query to get names of all employees working for some company.
-        GridCacheQuery<Map.Entry<Long, Person>> qry =
-            cache.queries().createSqlQuery(Person.class,
-                "from \"partitioned\".Person, \"replicated\".Organization " +
-                    "where Person.orgId = Organization.id and lower(Organization.name) = lower(?)");
-
-        // Transformer to convert Person objects to String.
-        // Since caller only needs employee names, we only
-        // send names back.
-        GridClosure<Map.Entry<Long, Person>, String> trans =
-            new GridClosure<Map.Entry<Long, Person>, String>() {
-                @Override public String apply(Map.Entry<Long, Person> e) {
-                    return e.getValue().getFirstName() + " " + e.getValue().getLastName();
-                }
-            };
-
-        // Query all nodes for names of all GridGain employees.
-        print("Names of all 'GridGain' employees: " + qry.execute(trans, "GridGain").get());
+        print("Following people have 'Master Degree' in their resumes: ", cache.query(masters).getAll());
+        print("Following people have 'Bachelor Degree' in their resumes: ", cache.query(bachelors).getAll());
     }
 
     /**
      * Populate cache with test data.
      *
-     * @throws GridException In case of error.
      * @throws InterruptedException In case of error.
      */
-    private static void initialize() throws GridException, InterruptedException {
-        // Organization projection.
-        GridCacheProjection<Long, Organization> orgCache = GridGain.grid().cache(REPLICATED_CACHE_NAME);
-
-        // Person projection.
-        GridCacheProjection<PersonKey, Person> personCache = GridGain.grid().cache(PARTITIONED_CACHE_NAME);
+    private static void initialize() throws InterruptedException {
+        IgniteCache<Long, Organization> orgCache = Ignition.ignite().cache(ORG_CACHE_NAME);
+        IgniteCache<PersonKey, Person> personCache = Ignition.ignite().cache(PERSON_CACHE_NAME);
 
         // Clear caches before start.
-        personCache.globalClearAll();
-        orgCache.globalClearAll();
+        personCache.clear();
+        orgCache.clear();
 
         // Organizations.
         Organization org1 = new Organization("GridGain");

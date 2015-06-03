@@ -21,7 +21,8 @@
 
 package org.gridgain.examples.services;
 
-import org.gridgain.grid.*;
+import org.apache.ignite.*;
+import org.apache.ignite.cluster.*;
 
 /**
  * Configuration constants for this example.
@@ -36,9 +37,6 @@ public class CacheServiceExampleUtils {
     /** Producer node role. */
     public static final String ROLE_PRODUCER = "PRODUCER";
 
-    /** Cache name. */
-    public static final String CACHE_NAME = "partitioned_tx";
-
     /** Queue name. */
     public static final String QUEUE_NAME = "example-queue";
 
@@ -51,15 +49,15 @@ public class CacheServiceExampleUtils {
      * @throws Exception If failed.
      */
     public static void runGridNode() throws Exception {
-        try (Grid grid = GridGain.start("examples/config/example-cache.xml")) {
-            GridProjection producers = grid.forAttribute(NODE_ROLE, ROLE_PRODUCER);
-            GridProjection consumers = grid.forAttribute(NODE_ROLE, ROLE_CONSUMER);
+        try (Ignite ignite = Ignition.start("config/example-ignite.xml")) {
+            ClusterGroup producers = ignite.cluster().forAttribute(NODE_ROLE, ROLE_PRODUCER);
+            ClusterGroup consumers = ignite.cluster().forAttribute(NODE_ROLE, ROLE_CONSUMER);
 
             // Deploy at most 1 producer for the cluster.
-            producers.services().deployClusterSingleton("producer", new CacheQueueProducerService());
+            ignite.services(producers).deployClusterSingleton("producer", new CacheQueueProducerService());
 
             // Deploy total of 2 consumer services with maximum of 1 per node.
-            consumers.services().deployMultiple("consumer", new CacheQueueConsumerService(), 2, 1);
+            ignite.services(consumers).deployMultiple("consumer", new CacheQueueConsumerService(), 2, 1);
 
             System.in.read();
         }

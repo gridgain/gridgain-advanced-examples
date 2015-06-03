@@ -9,16 +9,13 @@
 
 package org.gridgain.examples.datagrid.datastructures;
 
-import org.gridgain.grid.*;
-import org.gridgain.grid.cache.datastructures.*;
+import org.apache.ignite.*;
+import org.apache.ignite.configuration.*;
 
 /**
  * Consumer for queue example.
  */
 public class QueueConsumer {
-    /** Cache name. */
-    public static final String CACHE_NAME = "partitioned_tx";
-
     /** Queue name. */
     public static final String QUEUE_NAME = "Queue";
 
@@ -29,9 +26,8 @@ public class QueueConsumer {
      * @param args Arguments.
      */
     public static void main(String[] args) throws Exception {
-        try (Grid g = GridGain.start("config/example-cache.xml")) {
-            final GridCacheQueue<String> queue = g.cache(CACHE_NAME).dataStructures().queue(QUEUE_NAME, QUEUE_SIZE,
-                /*colocated*/false, /*create*/true);
+        try (Ignite ignite = Ignition.start("config/example-ignite.xml")) {
+            final IgniteQueue<String> queue = ignite.queue(QUEUE_NAME, QUEUE_SIZE, new CollectionConfiguration());
 
             assert queue != null;
 

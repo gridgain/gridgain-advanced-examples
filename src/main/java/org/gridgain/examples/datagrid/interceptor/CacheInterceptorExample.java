@@ -21,9 +21,12 @@
 
 package org.gridgain.examples.datagrid.interceptor;
 
-import org.gridgain.grid.*;
-import org.gridgain.grid.cache.*;
+import org.apache.ignite.*;
+import org.apache.ignite.cache.*;
+import org.apache.ignite.configuration.*;
 import org.jetbrains.annotations.*;
+
+import javax.cache.*;
 
 /**
  * This example shows how to configure and use cache interceptor to intercept certain
@@ -34,70 +37,56 @@ import org.jetbrains.annotations.*;
  * {@link Interceptor} on class path.
  */
 public class CacheInterceptorExample {
+    /** */
+    private static final String CACHE_NAME = CacheInterceptorExample.class.getSimpleName();
+
     /**
      * @param args Args.
-     * @throws GridException If failed.
      */
-    public static void main(String[] args) throws GridException {
-        try (Grid g = GridGain.start(configuration())) {
-            GridCache<Integer, Integer> c = g.cache(null);
+    public static void main(String[] args) {
+        try (Ignite ignite = Ignition.start("config/example-ignite.xml")) {
+            CacheConfiguration<Integer, Integer> cc = new CacheConfiguration<>(CACHE_NAME);
 
-            // Clear caches before running example.
-            c.globalClearAll();
+            cc.setInterceptor(new Interceptor());
 
-            Integer val = c.get(1);
+            try (IgniteCache<Integer, Integer> c = ignite.createCache(cc)) {
+                Integer val = c.get(1);
 
-            if (val != null)
-                throw new RuntimeException("Unexpected value [expected=null, actual=" + val + ']');
+                if (val != null)
+                    throw new RuntimeException("Unexpected value [expected=null, actual=" + val + ']');
 
-            c.put(1, 300);
-            c.put(2, 50);
+                c.put(1, 300);
+                c.put(2, 50);
 
-            // This get should be intercepted and return 100 instead.
-            val = c.get(2);
+                // This get should be intercepted and return 100 instead.
+                val = c.get(2);
 
-            if (val == null || val != 100)
-                throw new RuntimeException("Unexpected value [expected=100, actual=" + val + ']');
+                if (val == null || val != 100)
+                    throw new RuntimeException("Unexpected value [expected=100, actual=" + val + ']');
 
-            // This update should be cancelled by the interceptor.
-            c.put(1, 500);
+                // This update should be cancelled by the interceptor.
+                c.put(1, 500);
 
-            val = c.get(1);
+                val = c.get(1);
 
-            if (val == null || val != 300)
-                throw new RuntimeException("Unexpected value [expected=300, actual=" + val + ']');
+                if (val == null || val != 300)
+                    throw new RuntimeException("Unexpected value [expected=300, actual=" + val + ']');
 
-            // This update should pass the interceptor.
-            c.replace(1, 300, 150);
+                // This update should pass the interceptor.
+                c.replace(1, 300, 150);
 
-            val = c.get(1);
+                val = c.get(1);
 
-            if (val == null || val != 150)
-                throw new RuntimeException("Unexpected value [expected=150, actual=" + val + ']');
+                if (val == null || val != 150)
+                    throw new RuntimeException("Unexpected value [expected=150, actual=" + val + ']');
+            }
         }
-    }
-
-    /**
-     * @return Configuration.
-     */
-    private static GridConfiguration configuration() {
-        GridConfiguration c = new GridConfiguration();
-
-        c.setLocalHost("127.0.0.1");
-
-        GridCacheConfiguration cc = new GridCacheConfiguration();
-
-        cc.setInterceptor(new Interceptor());
-
-        c.setCacheConfiguration(cc);
-
-        return c;
     }
 
     /**
      *
      */
-    private static class Interceptor extends GridCacheInterceptorAdapter<Integer, Integer> {
+    private static class Interceptor extends CacheInterceptorAdapter<Integer, Integer> {
         /** {@inheritDoc} */
         @Nullable @Override public Integer onGet(Integer key, Integer val) {
             System.out.println("Intercepting onGet [key=" + key + ", val=" + val + ']');
@@ -111,13 +100,13 @@ public class CacheInterceptorExample {
         }
 
         /** {@inheritDoc} */
-        @Nullable @Override public Integer onBeforePut(Integer key, @Nullable Integer oldVal, Integer newVal) {
-            System.out.println("Intercepting onBeforePut [key=" + key + ", oldVal=" + oldVal +
+        @Nullable @Override public Integer onBeforePut(Cache.Entry<Integer, Integer> entry, Integer newVal) {
+            System.out.println("Intercepting onBeforePut [key=" + entry.getKey() + ", oldVal=" + entry.getValue() +
                 ", newVal=" + newVal + ']');
 
             // Deny update existing values to anything greater than 200.
             // However if old value is null, all new values are accepted.
-            return oldVal != null && newVal > 200 ? null : super.onBeforePut(key, oldVal, newVal);
+            return entry.getValue() != null && newVal > 200 ? null : super.onBeforePut(entry, newVal);
         }
     }
 }

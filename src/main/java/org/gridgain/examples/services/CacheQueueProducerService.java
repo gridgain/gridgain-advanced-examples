@@ -21,33 +21,36 @@
 
 package org.gridgain.examples.services;
 
-import org.gridgain.grid.*;
-import org.gridgain.grid.cache.datastructures.*;
-import org.gridgain.grid.resources.*;
-import org.gridgain.grid.service.*;
+import org.apache.ignite.*;
+import org.apache.ignite.configuration.*;
+import org.apache.ignite.resources.*;
+import org.apache.ignite.services.*;
 
 import static org.gridgain.examples.services.CacheServiceExampleUtils.*;
 
 /**
  * Cache queue producer service.
  */
-public class CacheQueueProducerService implements GridService {
+public class CacheQueueProducerService implements Service {
     /** Injected grid. */
-    @GridInstanceResource
-    protected Grid grid;
+    @IgniteInstanceResource
+    protected Ignite ignite;
 
     /** {@inheritDoc} */
-    @Override public void cancel(GridServiceContext ctx) {
+    @Override public void cancel(ServiceContext ctx) {
         // No-op.
     }
 
     /** {@inheritDoc} */
-    @Override public void execute(GridServiceContext ctx) throws Exception {
-        GridCacheDataStructures ds = grid.cache(CACHE_NAME).dataStructures();
+    @Override public void init(ServiceContext ctx) throws Exception {
+        // No-op.
+    }
 
-        GridCacheQueue<String> queue = ds.queue(QUEUE_NAME, QUEUE_SIZE, false, true);
+    /** {@inheritDoc} */
+    @Override public void execute(ServiceContext ctx) throws Exception {
+        IgniteQueue<String> queue = ignite.queue(QUEUE_NAME, QUEUE_SIZE, new CollectionConfiguration());
 
-        GridCacheAtomicLong counter = ds.atomicLong("example-atomic", 0, true);
+        IgniteAtomicLong counter = ignite.atomicLong("example-atomic", 0, true);
 
         while (!ctx.isCancelled()) {
             String item = "Item-" + counter.get();

@@ -21,7 +21,7 @@
 
 package org.gridgain.examples.datagrid.model;
 
-import org.gridgain.grid.cache.query.*;
+import org.apache.ignite.cache.query.annotations.*;
 
 import java.io.*;
 import java.util.concurrent.atomic.*;
@@ -34,11 +34,11 @@ public class Organization implements Serializable {
     private static final AtomicLong IDGEN = new AtomicLong();
 
     /** Organization ID (indexed). */
-    @GridCacheQuerySqlField(index = true)
+    @QuerySqlField(index = true)
     private long id;
 
     /** Organization name (indexed). */
-    @GridCacheQuerySqlField(index = true)
+    @QuerySqlField(index = true)
     private String name;
 
     /**

@@ -21,7 +21,7 @@
 
 package org.gridgain.examples.mbean;
 
-import org.gridgain.grid.*;
+import org.apache.ignite.*;
 
 import javax.management.*;
 import javax.swing.*;
@@ -34,22 +34,21 @@ import javax.swing.*;
 public class CustomMbeanExample {
     /**
      * @param args Command line arguments, none required.
-     * @throws GridException If example execution failed.
      */
     public static void main(String[] args) throws Exception {
-        try (Grid g = GridGain.start("config/example-cache.xml")) {
+        try (Ignite ignite = Ignition.start("config/example-ignite.xml")) {
             ObjectName objName = new ObjectName("org.gridgain:name=Custom MBean");
 
             try {
                 StandardMBean bean = new StandardMBean(new RandomGeneratorMBeanImpl(), RandomGeneratorMBean.class);
 
-                g.configuration().getMBeanServer().registerMBean(bean, objName);
+                ignite.configuration().getMBeanServer().registerMBean(bean, objName);
 
                 JOptionPane.showMessageDialog(null, "Press OK to unregister the MBean and stop the node.");
             }
             finally {
                 try {
-                    g.configuration().getMBeanServer().unregisterMBean(objName);
+                    ignite.configuration().getMBeanServer().unregisterMBean(objName);
                 }
                 catch (Exception ignored) {
                     // No-op.

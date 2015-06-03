@@ -21,16 +21,11 @@
 
 package org.gridgain.examples.jpa;
 
-import org.gridgain.grid.*;
-import org.gridgain.grid.cache.*;
-import org.gridgain.grid.spi.discovery.tcp.*;
-import org.gridgain.grid.spi.discovery.tcp.ipfinder.vm.*;
+import org.apache.ignite.*;
+import org.apache.ignite.cache.*;
+import org.apache.ignite.configuration.*;
 
-import java.util.*;
-
-import static org.gridgain.grid.cache.GridCacheAtomicityMode.*;
-import static org.gridgain.grid.cache.GridCacheMode.*;
-import static org.gridgain.grid.cache.GridCacheWriteSynchronizationMode.*;
+import static org.apache.ignite.cache.CacheAtomicityMode.*;
 
 /**
  * Starts up an empty node with example cache configuration.
@@ -40,34 +35,21 @@ public class JpaHibernateExampleNodeStartup {
      * Start up an empty node with specified cache configuration.
      *
      * @param args Command line arguments, none required.
-     * @throws GridException If example execution failed.
      */
-    public static void main(String[] args) throws GridException {
-        GridGain.start(configuration());
+    public static void main(String[] args) {
+        Ignition.start(configuration());
     }
 
     /**
      * Create Grid configuration with GGFS and enabled IPC.
      *
      * @return Grid configuration.
-     * @throws GridException If configuration creation failed.
      */
-    public static GridConfiguration configuration() throws GridException {
-        GridConfiguration cfg = new GridConfiguration();
+    public static IgniteConfiguration configuration() {
+        IgniteConfiguration cfg = new IgniteConfiguration();
 
         cfg.setGridName("hibernate-grid");
         cfg.setLocalHost("127.0.0.1");
-        cfg.setRestEnabled(false);
-
-        GridTcpDiscoverySpi discoSpi = new GridTcpDiscoverySpi();
-
-        GridTcpDiscoveryVmIpFinder ipFinder = new GridTcpDiscoveryVmIpFinder();
-
-        ipFinder.setAddresses(Collections.singletonList("127.0.0.1:47500..47509"));
-
-        discoSpi.setIpFinder(ipFinder);
-
-        cfg.setDiscoverySpi(discoSpi);
 
         cfg.setCacheConfiguration(
             cacheConfiguration("org.hibernate.cache.spi.UpdateTimestampsCache", ATOMIC),
@@ -87,13 +69,13 @@ public class JpaHibernateExampleNodeStartup {
      * @param atomicityMode Atomicity mode.
      * @return Cache configuration.
      */
-    private static GridCacheConfiguration cacheConfiguration(String name, GridCacheAtomicityMode atomicityMode) {
-        GridCacheConfiguration ccfg = new GridCacheConfiguration();
+    private static CacheConfiguration cacheConfiguration(String name, CacheAtomicityMode atomicityMode) {
+        CacheConfiguration ccfg = new CacheConfiguration();
 
         ccfg.setName(name);
-        ccfg.setCacheMode(PARTITIONED);
+        ccfg.setCacheMode(CacheMode.PARTITIONED);
         ccfg.setAtomicityMode(atomicityMode);
-        ccfg.setWriteSynchronizationMode(FULL_SYNC);
+        ccfg.setWriteSynchronizationMode(CacheWriteSynchronizationMode.FULL_SYNC);
 
         return ccfg;
     }

@@ -26,7 +26,8 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>1.7</maven.compiler.source>
         <maven.compiler.target>1.7</maven.compiler.target>
-        <gridgain.version>6.2.0-rc2</gridgain.version>
+        <gridgain.version>7.0.6</gridgain.version>
+        <ignite.version>1.0.6</ignite.version>
         <mongodb.version>RELEASE</mongodb.version>
         <embedded.mongo.version>RELEASE</embedded.mongo.version>
         <morphia.version>RELEASE</morphia.version>
@@ -42,20 +43,38 @@
     <dependencies>
         <dependency>
             <groupId>org.gridgain</groupId>
-            <artifactId>gridgain-platform-ent</artifactId>
+            <artifactId>gridgain-core</artifactId>
             <version>${gridgain.version}</version>
         </dependency>
 
         <dependency>
-            <groupId>org.gridgain</groupId>
-            <artifactId>gridgain-hibernate</artifactId>
-            <version>${gridgain.version}</version>
+            <groupId>org.apache.ignite</groupId>
+            <artifactId>ignite-spring</artifactId>
+            <version>${ignite.version}</version>
         </dependency>
 
         <dependency>
-            <groupId>org.gridgain</groupId>
-            <artifactId>gridgain-log4j</artifactId>
-            <version>${gridgain.version}</version>
+            <groupId>org.apache.ignite</groupId>
+            <artifactId>ignite-indexing</artifactId>
+            <version>${ignite.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.ignite</groupId>
+            <artifactId>ignite-geospatial</artifactId>
+            <version>${ignite.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.ignite</groupId>
+            <artifactId>ignite-hibernate</artifactId>
+            <version>${ignite.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.ignite</groupId>
+            <artifactId>ignite-log4j</artifactId>
+            <version>${ignite.version}</version>
         </dependency>
 
         <dependency>
@@ -73,7 +92,7 @@
         <dependency>
             <groupId>com.google.code.morphia</groupId>
             <artifactId>morphia</artifactId>
-            <version>${mongodb.version}</version>
+            <version>${morphia.version}</version>
         </dependency>
     </dependencies>
 

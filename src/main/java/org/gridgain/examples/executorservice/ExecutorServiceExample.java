@@ -9,8 +9,8 @@
 
 package org.gridgain.examples.executorservice;
 
-import org.gridgain.grid.*;
-import org.gridgain.grid.lang.*;
+import org.apache.ignite.*;
+import org.apache.ignite.lang.*;
 
 import java.util.*;
 import java.util.concurrent.*;
@@ -23,16 +23,16 @@ public class ExecutorServiceExample {
      * @param args Arguments.
      */
     public static void main(String[] args) throws Exception {
-        try (Grid g = GridGain.start("config/example-cache.xml")) {
+        try (Ignite ignite = Ignition.start("config/example-ignite.xml")) {
             // Get grid-enabled executor service.
-            ExecutorService exec = g.compute().executorService();
+            ExecutorService exec = ignite.executorService();
 
             Collection<Future<?>> futs = new ArrayList<>();
 
             // Iterate through all words in the sentence and create jobs.
             for (final String word : "Print each word on random node".split(" ")) {
                 // Execute runnable on some node.
-                futs.add(exec.submit(new GridRunnable() {
+                futs.add(exec.submit(new IgniteRunnable() {
                     @Override public void run() {
                         System.out.println(">>> Printing '" + word + "' on this node from grid job.");
                     }

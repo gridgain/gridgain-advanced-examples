@@ -21,7 +21,7 @@
 
 package org.gridgain.examples.datagrid.model;
 
-import org.gridgain.grid.cache.query.*;
+import org.apache.ignite.cache.query.annotations.*;
 
 import java.io.*;
 import java.util.concurrent.atomic.*;
@@ -34,27 +34,27 @@ public class Person implements Serializable {
     private static final AtomicLong IDGEN = new AtomicLong();
 
     /** Person ID (indexed). */
-    @GridCacheQuerySqlField(index = true)
+    @QuerySqlField(index = true)
     private long id;
 
     /** Organization ID (indexed). */
-    @GridCacheQuerySqlField(index = true)
+    @QuerySqlField(index = true)
     private long orgId;
 
     /** First name (not-indexed). */
-    @GridCacheQuerySqlField
+    @QuerySqlField
     private String firstName;
 
     /** Last name (not indexed). */
-    @GridCacheQuerySqlField
+    @QuerySqlField
     private String lastName;
 
     /** Resume text (create LUCENE-based TEXT index for this field). */
-    @GridCacheQueryTextField
+    @QueryTextField
     private String resume;
 
     /** Salary (create non-unique SQL index for this field). */
-    @GridCacheQuerySqlField
+    @QuerySqlField
     private double salary;
 
     /** Affinity-aware key. */

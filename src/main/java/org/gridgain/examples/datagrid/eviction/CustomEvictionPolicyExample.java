@@ -21,10 +21,12 @@
 
 package org.gridgain.examples.datagrid.eviction;
 
-import org.gridgain.grid.*;
-import org.gridgain.grid.cache.*;
-import org.gridgain.grid.cache.eviction.*;
+import org.apache.ignite.*;
+import org.apache.ignite.cache.eviction.*;
+import org.apache.ignite.configuration.*;
 
+import javax.cache.*;
+import java.io.*;
 import java.util.Map.*;
 import java.util.*;
 import java.util.concurrent.*;
@@ -44,76 +46,64 @@ import java.util.concurrent.atomic.*;
  */
 public class CustomEvictionPolicyExample {
     /** */
+    private static final String CACHE_NAME = CustomEvictionPolicyExample.class.getSimpleName();
+
+    /** */
     private static final int MAX_SIZE = 10;
 
     /**
      * @param args Args.
-     * @throws GridException If failed.
      */
-    public static void main(String[] args) throws GridException {
-        try (Grid g = GridGain.start(configuration())) {
+    public static void main(String[] args) {
+        try (Ignite ignite = Ignition.start("config/example-ignite.xml")) {
             Random r = new Random();
 
-            for (int i = 0; i < MAX_SIZE * 3; i++) {
-                Employee e = new Employee(r.nextInt(20));
+            CacheConfiguration<Integer, Employee> cc = new CacheConfiguration<>(CACHE_NAME);
 
-                System.out.println("Putting: " + e);
+            cc.setEvictionPolicy(new EmployeeEvictionPolicy());
 
-                g.cache(null).putx(i, e);
+            try (IgniteCache<Integer, Employee> cache = ignite.createCache(cc)) {
+                for (int i = 0; i < MAX_SIZE * 3; i++) {
+                    Employee e = new Employee(r.nextInt(20));
+
+                    System.out.println("Putting: " + e);
+
+                    cache.put(i, e);
+                }
+
+                System.out.println("Employees in cache:");
+
+                for (Cache.Entry<Integer, Employee> e : cache)
+                    System.out.println(e.getValue());
             }
-
-            System.out.println("Employees in cache:");
-
-            for (Employee e : g.<Integer, Employee>cache(null).values())
-                System.out.println(e);
         }
-    }
-
-    /**
-     * @return Configuration.
-     */
-    private static GridConfiguration configuration() {
-        GridConfiguration c = new GridConfiguration();
-
-        c.setLocalHost("127.0.0.1");
-
-        GridCacheConfiguration cc = new GridCacheConfiguration();
-
-        cc.setEvictionPolicy(new EvictionPolicy());
-
-        c.setCacheConfiguration(cc);
-
-        return c;
     }
 
     /**
      * Custom eviction policy which maintains Employees put to cache
      * according to their priority.
      */
-    public static class EvictionPolicy implements GridCacheEvictionPolicy<Integer, Employee> {
-        /** Meta key. */
-        private static final String META = "evict-plc-meta";
-
+    public static class EmployeeEvictionPolicy implements EvictionPolicy<Integer, Employee>, Serializable {
         /** Counter to avoid non-constant ConcurrentMap.size(). */
         private final AtomicLong mapSize = new AtomicLong();
 
         /** Sorted map to maintain employees in priority order. */
-        private final ConcurrentNavigableMap<PolicyKey, GridCacheEntry<Integer, Employee>> map =
+        private final ConcurrentNavigableMap<PolicyKey, EvictableEntry<Integer, Employee>> map =
             new ConcurrentSkipListMap<>();
 
         /** Seed generator to avoid collisions on same prio. */
         private final AtomicLong seedGen = new AtomicLong();
 
         /** {@inheritDoc} */
-        @Override public void onEntryAccessed(boolean rmv, GridCacheEntry<Integer, Employee> e) {
+        @Override public void onEntryAccessed(boolean rmv, EvictableEntry<Integer, Employee> e) {
             if (rmv) {
-                PolicyKey key = e.meta(META);
+                PolicyKey key = e.meta();
 
                 if (key != null && map.remove(key, e))
                     mapSize.decrementAndGet();
             }
             else {
-                Employee employee = e.peek();
+                Employee employee = e.getValue();
 
                 if (employee == null)
                     return;
@@ -126,7 +116,7 @@ public class CustomEvictionPolicyExample {
                 mapSize.incrementAndGet();
 
                 // If another thread is processing the same entry, then undo and return.
-                if (e.putMetaIfAbsent(META, key) != null || !e.isCached()) {
+                if (e.putMetaIfAbsent(key) != null || !e.isCached()) {
                     if (map.remove(key, e))
                         mapSize.decrementAndGet();
 
@@ -138,7 +128,7 @@ public class CustomEvictionPolicyExample {
                 long cnt = mapSize.get() - MAX_SIZE;
 
                 if (cnt > 0) {
-                    for (Entry<PolicyKey, GridCacheEntry<Integer, Employee>> e0 : map.entrySet()) {
+                    for (Entry<PolicyKey, EvictableEntry<Integer, Employee>> e0 : map.entrySet()) {
                         // If successfully evicted.
                         if (e0.getValue().evict() && map.remove(e0.getKey(), e0.getValue())) {
                             mapSize.decrementAndGet();
@@ -160,7 +150,7 @@ public class CustomEvictionPolicyExample {
     /**
      * Employee.
      */
-    public static class Employee {
+    public static class Employee implements Serializable {
         /** */
         private final int prio;
 

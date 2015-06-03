@@ -27,13 +27,13 @@ import de.flapdoodle.embed.mongo.*;
 import de.flapdoodle.embed.mongo.config.*;
 import de.flapdoodle.embed.mongo.distribution.*;
 import de.flapdoodle.embed.process.runtime.*;
-import org.gridgain.grid.*;
-import org.gridgain.grid.cache.*;
-import org.gridgain.grid.cache.store.*;
-import org.gridgain.grid.logger.*;
-import org.gridgain.grid.resources.*;
-import org.jetbrains.annotations.*;
+import org.apache.ignite.*;
+import org.apache.ignite.cache.store.*;
+import org.apache.ignite.lifecycle.*;
+import org.apache.ignite.resources.*;
 
+import javax.cache.*;
+import javax.cache.integration.*;
 import java.io.*;
 import java.util.*;
 
@@ -43,7 +43,7 @@ import java.util.*;
  * @author @java.author
  * @version @java.version
  */
-public class CacheMongoStore extends GridCacheStoreAdapter<Long, Employee> implements GridLifecycleAware {
+public class CacheMongoStore extends CacheStoreAdapter<Long, Employee> implements LifecycleAware {
     /** MongoDB port. */
     private static final int MONGOD_PORT = 27001;
 
@@ -54,11 +54,11 @@ public class CacheMongoStore extends GridCacheStoreAdapter<Long, Employee> imple
     private Datastore morphia;
 
     /** Logger. */
-    @GridLoggerResource
-    private GridLogger log;
+    @LoggerResource
+    private IgniteLogger log;
 
     /** {@inheritDoc} */
-    @Override public void start() throws GridException {
+    @Override public void start() throws IgniteException {
         MongodStarter starter = MongodStarter.getDefaultInstance();
 
         try {
@@ -82,12 +82,12 @@ public class CacheMongoStore extends GridCacheStoreAdapter<Long, Employee> imple
             morphia = new Morphia(clss).createDatastore(mongo, "test");
         }
         catch (IOException e) {
-            throw new GridException(e);
+            throw new IgniteException(e);
         }
     }
 
     /** {@inheritDoc} */
-    @Override public void stop() throws GridException {
+    @Override public void stop() throws IgniteException {
         if (mongoExe != null) {
             mongoExe.stop();
 
@@ -96,8 +96,8 @@ public class CacheMongoStore extends GridCacheStoreAdapter<Long, Employee> imple
     }
 
     /** {@inheritDoc} */
-    @Override public Employee load(@Nullable GridCacheTx tx, Long k) throws GridException {
-        Employee e = morphia.find(Employee.class).field("id").equal(k).get();
+    @Override public Employee load(Long key) throws CacheLoaderException {
+        Employee e = morphia.find(Employee.class).field("id").equal(key).get();
 
         log("Loaded employee: " + e);
 
@@ -105,23 +105,26 @@ public class CacheMongoStore extends GridCacheStoreAdapter<Long, Employee> imple
     }
 
     /** {@inheritDoc} */
-    @Override public void put(@Nullable GridCacheTx tx, Long k, Employee e) throws GridException {
-        morphia.save(e);
+    @Override public void write(Cache.Entry<? extends Long, ? extends Employee> e) throws CacheWriterException {
+        morphia.save(e.getValue());
 
-        log("Stored employee: " + e);
+        log("Stored employee: " + e.getValue());
     }
 
     /** {@inheritDoc} */
-    @Override public void remove(@Nullable GridCacheTx tx, Long k) throws GridException {
-        Employee e = morphia.find(Employee.class).field("id").equal(k).get();
+    @Override public void delete(Object key) throws CacheWriterException {
+        Employee e = morphia.find(Employee.class).field("id").equal(key).get();
 
         if (e != null) {
             morphia.delete(e);
 
-            log("Removed employee: " + k);
+            log("Removed employee: " + key);
         }
     }
 
+    /**
+     * @param msg Message.
+     */
     private void log(String msg) {
         if (log != null) {
             log.info(">>>");
@@ -132,33 +135,6 @@ public class CacheMongoStore extends GridCacheStoreAdapter<Long, Employee> imple
             System.out.println(">>>");
             System.out.println(">>> " + msg);
             System.out.println(">>>");
-        }
-    }
-
-    /**
-     * Test.
-     *
-     * @param args Command line arguments.
-     * @throws GridException If failed.
-     */
-    public static void main(String[] args) throws GridException {
-        CacheMongoStore store = new CacheMongoStore();
-
-        store.start();
-
-        try {
-            store.put(null, 1L, new Employee(1L, "Jon", 1000));
-            store.put(null, 2L, new Employee(2L, "Jon", 2000));
-            store.put(null, 3L, new Employee(3L, "Jon", 3000));
-
-            store.load(null, 1L);
-
-            store.remove(null, 1L);
-
-            store.load(null, 1L);
-        }
-        finally {
-            store.stop();
         }
     }
 }

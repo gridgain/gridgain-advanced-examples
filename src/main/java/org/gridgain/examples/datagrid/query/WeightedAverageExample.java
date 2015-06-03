@@ -21,14 +21,13 @@
 
 package org.gridgain.examples.datagrid.query;
 
-import org.gridgain.grid.*;
-import org.gridgain.grid.cache.*;
-import org.gridgain.grid.cache.query.*;
-import org.gridgain.grid.lang.*;
+import org.apache.ignite.*;
+import org.apache.ignite.cache.query.*;
+import org.apache.ignite.cache.query.annotations.*;
+import org.apache.ignite.configuration.*;
 
 import java.io.*;
 import java.util.*;
-import java.util.Map.*;
 
 /**
  * This examples shows how to get weighted average with GridGain.
@@ -38,77 +37,47 @@ import java.util.Map.*;
  * Weight of the segment's speed is the time of the segment.
  * <p>
  * Remote nodes should always be started with special configuration file which
- * enables P2P class loading: {@code 'ggstart.{sh|bat} ADVANCED-EXAMPLES-DIR/config/example-cache.xml'}.
+ * enables P2P class loading: {@code 'ggstart.{sh|bat} ADVANCED-EXAMPLES-DIR/config/example-ignite.xml'}.
  */
 public class WeightedAverageExample {
     /** Cache name. */
-    private static final String CACHE_NAME = "partitioned";
+    private static final String CACHE_NAME = WeightedAverageExample.class.getSimpleName();
 
     /**
      * @param args Command line arguments, none required.
-     * @throws GridException If example execution failed.
      */
     public static void main(String[] args) throws Exception {
-        try (Grid g = GridGain.start("config/example-cache.xml")) {
-            initialize();
+        try (Ignite ignite = Ignition.start("config/example-ignite.xml")) {
+            CacheConfiguration<Long, Segment> cc = new CacheConfiguration<>(CACHE_NAME);
 
-            GridCacheProjection<Long, Segment> c = g.cache(CACHE_NAME);
+            cc.setIndexedTypes(Long.class, Segment.class);
 
-            // Clear caches before running example.
-            c.globalClearAll();
+            try (IgniteCache<Long, Segment> c = ignite.createCache(cc)) {
+                initialize();
 
-            // Calculate average weighted speed.
-            GridCacheQuery<Entry<Long, Segment>> qry = c.queries().createSqlQuery(
-                Segment.class,
-                "speed > 80"); // Take only those segments where car was faster than 80 km/h.
+                // Calculate average weighted speed.
+                // Take only those segments where car was faster than 80 km/h.
+                SqlFieldsQuery qry = new SqlFieldsQuery(
+                    "select sum(speed * duration) / sum(duration) from Segment where speed > 80");
 
-            Collection<GridBiTuple<Double, Double>> res = qry.execute(
-                new GridReducer<Entry<Long, Segment>, GridBiTuple<Double, Double>>() {
-                    private double sumWeightedV;
+                Collection<List<?>> res = c.query(qry).getAll();
 
-                    private double sumT;
+                assert res.size() == 1;
 
-                    @Override public boolean collect(Entry<Long, Segment> e) {
-                        Segment segment = e.getValue();
+                double avgWeightedSpeed = (Double)res.iterator().next().get(0);
 
-                        System.out.println("Reducing entry: " + segment);
-
-                        sumWeightedV += segment.getSpeed() * segment.getDuration();
-
-                        sumT += segment.getDuration();
-
-                        // Continue collecting.
-                        return true;
-                    }
-
-                    @Override public GridBiTuple<Double, Double> reduce() {
-                        return new GridBiTuple<>(sumWeightedV, sumT);
-                    }
-                }).get();
-
-            double v = 0.0d;
-            int t = 0;
-
-            for (GridBiTuple<Double, Double> t0 : res) {
-                v += t0.get1();
-                t += t0.get2();
+                System.out.println("Average speed is: " + avgWeightedSpeed + " km/h");
             }
-
-            double avgWeightedSpeed = v / t;
-
-            System.out.println("Average speed is: " + avgWeightedSpeed + " km/h");
         }
     }
 
     /**
      * Populate cache with test data.
-     *
-     * @throws GridException In case of error.
      */
-    private static void initialize() throws GridException {
+    private static void initialize() {
         Random r = new Random();
 
-        GridCache<Long, Segment> c = GridGain.grid().cache(CACHE_NAME);
+        IgniteCache<Long, Segment> c = Ignition.ignite().cache(CACHE_NAME);
 
         // Car went through 50 segments.
         for (long s = 0; s < 50; s++) {
@@ -129,11 +98,11 @@ public class WeightedAverageExample {
         private long segmentId;
 
         /** */
-        @GridCacheQuerySqlField(index = false)
+        @QuerySqlField(index = false)
         private double speed;
 
         /** */
-        @GridCacheQuerySqlField(index = false)
+        @QuerySqlField(index = false)
         private double duration;
 
         /**

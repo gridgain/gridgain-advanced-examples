@@ -21,22 +21,25 @@
 
 package org.gridgain.examples.datagrid.lock;
 
-import org.gridgain.examples.datagrid.*;
-import org.gridgain.grid.*;
-import org.gridgain.grid.cache.*;
+import org.apache.ignite.*;
+import org.apache.ignite.cache.*;
+import org.apache.ignite.configuration.*;
+import org.gridgain.examples.*;
 
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
+import java.util.concurrent.locks.*;
 
 /**
  * Demonstrates how to use cache locks.
  * <p>
  * Remote nodes should always be started with special configuration file:
- * {@code 'ggstart.{sh|bat} ADVANCED-EXAMPLES-DIR/config/example-cache.xml'}
- * or {@link CacheExampleNodeStartup} can be used.
+ * {@code 'ggstart.{sh|bat} ADVANCED-EXAMPLES-DIR/config/example-ignite.xml'}
+ * or {@link ExampleNodeStartup} can be used.
  */
 public class CacheLockExample {
     /** Cache name. */
-    private static final String CACHE_NAME = "partitioned_tx";
+    private static final String CACHE_NAME = CacheLockExample.class.getSimpleName();
 
     /**
      * Executes example.
@@ -45,99 +48,94 @@ public class CacheLockExample {
      * @throws Exception If example execution failed.
      */
     public static void main(String[] args) throws Exception {
-        try (Grid g = GridGain.start("config/example-cache.xml")) {
+        try (Ignite ignite = Ignition.start("config/example-ignite.xml")) {
             System.out.println();
             System.out.println(">>> Cache lock example started.");
 
-            final GridCache<Long, Long> cache = g.cache(CACHE_NAME);
+            CacheConfiguration<Long, Long> cc = new CacheConfiguration<>(CACHE_NAME);
 
-            // Clear caches before running example.
-            cache.globalClearAll();
+            cc.setAtomicityMode(CacheAtomicityMode.TRANSACTIONAL);
 
-            // Lock the key. Timeout 0 = infinite.
-            cache.lock(1L, 0);
+            try (IgniteCache<Long, Long> cache = ignite.createCache(cc)) {
+                Lock lock = cache.lock(1L);
 
-            final AtomicReference<Object> res = new AtomicReference<>();
+                // Lock the key.
+                lock.lock();
 
-            new Thread(new Runnable() {
-                @Override public void run() {
-                    System.out.println("Will try to lock key with 500 ms timeout (should fail).");
+                final AtomicReference<Object> res = new AtomicReference<>();
 
-                    try {
-                        boolean b = cache.lock(1L, 500);
+                new Thread(new Runnable() {
+                    @Override public void run() {
+                        System.out.println("Will try to lock key with 500 ms timeout (should fail).");
 
-                        if (!b)
-                            res.set(false);
-                        else
-                            // Cannot reach this line.
-                            System.exit(1);
-                    }
-                    catch (GridException e) {
-                        e.printStackTrace();
-
-                        System.exit(1);
-                    }
-                }
-            }).start();
-
-            while (res.get() == null) {
-                System.out.println("Waiting for operation to complete in parallel thread.");
-
-                Thread.sleep(500);
-            }
-
-            if (res.get() instanceof Boolean)
-                System.out.println("Locking in parallel thread failed: " + res.get());
-            else
-                throw new Exception("Unexpected result: " + res.get());
-
-            res.set(null);
-
-            // Unlock the key.
-            cache.unlock(1L);
-
-            Thread thread = new Thread(new Runnable() {
-                @Override public void run() {
-                    System.out.println("Will try to lock key with 500 ms timeout (should fail).");
-
-                    try {
-                        cache.lock(1L, 0);
-
-                        res.set(true);
-                    }
-                    catch (GridException e) {
-                        e.printStackTrace();
-
-                        System.exit(1);
-                    }
-                    finally {
                         try {
-                            cache.unlock(1L);
+                            boolean b = cache.lock(1L).tryLock(500, TimeUnit.MILLISECONDS);
+
+                            if (!b)
+                                res.set(false);
+                            else
+                                // Cannot reach this line.
+                                System.exit(1);
                         }
-                        catch (GridException e) {
+                        catch (InterruptedException e) {
                             e.printStackTrace();
+
+                            System.exit(1);
                         }
                     }
+                }).start();
+
+                while (res.get() == null) {
+                    System.out.println("Waiting for operation to complete in parallel thread.");
+
+                    Thread.sleep(500);
                 }
-            });
 
-            thread.start();
+                if (res.get() instanceof Boolean)
+                    System.out.println("Locking in parallel thread failed: " + res.get());
+                else
+                    throw new Exception("Unexpected result: " + res.get());
 
-            while (res.get() == null) {
-                System.out.println("Waiting for operation to complete in parallel thread.");
+                res.set(null);
 
-                Thread.sleep(500);
+                // Unlock the key.
+                lock.unlock();
+
+                Thread thread = new Thread(new Runnable() {
+                    @Override public void run() {
+                        System.out.println("Will try to lock key with 500 ms timeout (should fail).");
+
+                        Lock lock0 = cache.lock(1L);
+
+                        try {
+                            lock0.lock();
+
+                            res.set(true);
+                        }
+                        finally {
+                            lock0.unlock();
+                        }
+                    }
+                });
+
+                thread.start();
+
+                while (res.get() == null) {
+                    System.out.println("Waiting for operation to complete in parallel thread.");
+
+                    Thread.sleep(500);
+                }
+
+                if (res.get() instanceof Boolean)
+                    System.out.println("Locking in parallel thread succeeded: " + res.get());
+                else
+                    throw new Exception("Unexpected result: " + res.get());
+
+                // Let thread unlock the key before stopping the grid.
+                thread.join();
+
+                System.out.println(">>> Cache lock example finished.");
             }
-
-            if (res.get() instanceof Boolean)
-                System.out.println("Locking in parallel thread succeeded: " + res.get());
-            else
-                throw new Exception("Unexpected result: " + res.get());
-
-            // Let thread unlock the key before stopping the grid.
-            thread.join();
-
-            System.out.println(">>> Cache lock example finished.");
         }
     }
 }

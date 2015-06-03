@@ -9,10 +9,10 @@
 
 package org.gridgain.examples.datagrid.putget;
 
-import org.gridgain.examples.datagrid.*;
-import org.gridgain.grid.*;
-import org.gridgain.grid.cache.*;
-import org.gridgain.grid.lang.*;
+import org.apache.ignite.*;
+import org.apache.ignite.cluster.*;
+import org.apache.ignite.lang.*;
+import org.gridgain.examples.*;
 
 import java.util.*;
 
@@ -20,49 +20,46 @@ import java.util.*;
  * This example demonstrates very basic operations on cache, such as 'put' and 'get'.
  * <p>
  * Remote nodes should always be started with special configuration file which
- * enables P2P class loading: {@code 'ggstart.{sh|bat} examples/config/example-cache.xml'}.
+ * enables P2P class loading: {@code 'ggstart.{sh|bat} examples/config/example-ignite.xml'}.
  * <p>
- * Alternatively you can run {@link CacheExampleNodeStartup} in another JVM which will
- * start GridGain node with {@code examples/config/example-cache.xml} configuration.
+ * Alternatively you can run {@link ExampleNodeStartup} in another JVM which will
+ * start GridGain node with {@code examples/config/example-ignite.xml} configuration.
  */
 public class CachePutGetExample {
     /** Cache name. */
-    private static final String CACHE_NAME = "partitioned";
+    private static final String CACHE_NAME = CachePutGetExample.class.getSimpleName();
 
     /**
      * Executes example.
      *
      * @param args Command line arguments, none required.
-     * @throws GridException If example execution failed.
      */
     public static void main(String[] args) throws Exception {
-        try (Grid g = GridGain.start("config/example-cache.xml")) {
-            // Individual puts and gets.
-            putGet();
+        try (Ignite ignite = Ignition.start("config/example-ignite.xml")) {
+            try (IgniteCache<Integer, String> cache = ignite.createCache(CACHE_NAME)) {
+                // Individual puts and gets.
+                putGet(ignite);
 
-            // Bulk puts and gets.
-            putAllGetAll();
+                // Bulk puts and gets.
+                putAllGetAll(ignite);
+            }
         }
     }
 
     /**
      * Execute individual puts and gets.
-     *
-     * @throws GridException If failed.
      */
-    private static void putGet() throws Exception {
+    private static void putGet(Ignite ignite) throws Exception {
         System.out.println();
         System.out.println(">>> Cache put-get example started.");
 
-        Grid g = GridGain.grid();
-
-        final GridCache<Integer, String> cache = g.cache(CACHE_NAME);
+        final IgniteCache<Integer, String> cache = ignite.cache(CACHE_NAME);
 
         final int keyCnt = 20;
 
         // Put keys in cache.
         for (int i = 0; i < keyCnt; i++)
-            cache.putx(i, Integer.toString(i));
+            cache.put(i, Integer.toString(i));
 
         System.out.println(">>> Stored values in cache.");
 
@@ -74,8 +71,8 @@ public class CachePutGetExample {
                 throw new Exception("Invalid value in cache [key=" + i + ", val=" + val + ']');
         }
 
-        // Projection (view) for remote nodes that have cache running.
-        GridProjection rmts = g.forCache(CACHE_NAME).forRemotes();
+        // Cluster group for remote nodes that have cache running.
+        ClusterGroup rmts = ignite.cluster().forCacheNodes(CACHE_NAME).forRemotes();
 
         // If no other cache nodes are started.
         if (rmts.nodes().isEmpty()) {
@@ -85,28 +82,22 @@ public class CachePutGetExample {
         }
 
         // Get and print out values on all remote nodes.
-        rmts.compute().broadcast(new GridCallable<Object>() {
-            @Override public Object call() throws GridException {
+        ignite.compute(rmts).broadcast(new IgniteRunnable() {
+            @Override public void run() {
                 for (int i = 0; i < keyCnt; i++)
                     System.out.println("Got [key=" + i + ", val=" + cache.get(i) + ']');
-
-                return null;
             }
-        }).get();
+        });
     }
 
     /**
      * Execute bulk {@code putAll(...)} and {@code getAll(...)} operations.
-     *
-     * @throws GridException If failed.
      */
-    private static void putAllGetAll() throws GridException {
+    private static void putAllGetAll(Ignite ignite) {
         System.out.println();
         System.out.println(">>> Starting putAll-getAll example.");
 
-        Grid g = GridGain.grid();
-
-        final GridCache<Integer, String> cache = g.cache(CACHE_NAME);
+        final IgniteCache<Integer, String> cache = ignite.cache(CACHE_NAME);
 
         final int keyCnt = 20;
 
@@ -127,8 +118,8 @@ public class CachePutGetExample {
         for (Map.Entry<Integer, String> e : vals.entrySet())
             System.out.println("Got entry [key=" + e.getKey() + ", val=" + e.getValue() + ']');
 
-        // Projection (view) for remote nodes that have cache running.
-        GridProjection rmts = g.forCache(CACHE_NAME).forRemotes();
+        // Cluster group for remote nodes that have cache running.
+        ClusterGroup rmts = ignite.cluster().forCacheNodes(CACHE_NAME).forRemotes();
 
         // If no other cache nodes are started.
         if (rmts.nodes().isEmpty()) {
@@ -137,12 +128,12 @@ public class CachePutGetExample {
             return;
         }
 
-        final Collection<Integer> keys = new ArrayList<>(batch.keySet());
+        final Set<Integer> keys = new HashSet<>(batch.keySet());
 
         // Get values from all remote cache nodes.
-        Collection<Map<Integer, String>> retMaps = rmts.compute().broadcast(
-            new GridCallable<Map<Integer, String>>() {
-                @Override public Map<Integer, String> call() throws GridException {
+        Collection<Map<Integer, String>> retMaps = ignite.compute(rmts).broadcast(new IgniteCallable<Map<Integer,
+                                                                                      String>>() {
+                @Override public Map<Integer, String> call() {
                     Map<Integer, String> vals = cache.getAll(keys);
 
                     for (Map.Entry<Integer, String> e : vals.entrySet())
@@ -150,7 +141,8 @@ public class CachePutGetExample {
 
                     return vals;
                 }
-            }).get();
+            }
+        );
 
         System.out.println(">>> Got all entries from all remote nodes.");
 

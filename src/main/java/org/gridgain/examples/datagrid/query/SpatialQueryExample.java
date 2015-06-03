@@ -23,57 +23,58 @@ package org.gridgain.examples.datagrid.query;
 
 import com.vividsolutions.jts.geom.*;
 import com.vividsolutions.jts.io.*;
-import org.gridgain.grid.*;
-import org.gridgain.grid.cache.*;
-import org.gridgain.grid.cache.query.*;
+import org.apache.ignite.*;
+import org.apache.ignite.cache.query.*;
+import org.apache.ignite.cache.query.annotations.*;
+import org.apache.ignite.configuration.*;
 
+import javax.cache.*;
 import java.util.*;
 
 /**
  * This examples shows usage of spatial indexes.
  * <p>
  * Remote nodes should always be started with special configuration file which
- * enables P2P class loading: {@code 'ggstart.{sh|bat} ADVANCED-EXAMPLES-DIR/config/example-cache.xml'}.
+ * enables P2P class loading: {@code 'ggstart.{sh|bat} ADVANCED-EXAMPLES-DIR/config/example-ignite.xml'}.
  */
 public class SpatialQueryExample {
     /** Cache name. */
-    private static final String CACHE_NAME = "partitioned";
+    private static final String CACHE_NAME = SpatialQueryExample.class.getSimpleName();
 
     /**
      * @param args Command line arguments, none required.
-     * @throws GridException If example execution failed.
      */
     public static void main(String[] args) throws Exception {
-        try (Grid g = GridGain.start("config/example-cache.xml")) {
-            GridCache<Integer, Entry> c = g.cache(CACHE_NAME);
+        try (Ignite ignite = Ignition.start("config/example-ignite.xml")) {
+            CacheConfiguration<Integer, Entry> cc = new CacheConfiguration<>(CACHE_NAME);
 
-            // Clear caches before running example.
-            c.globalClearAll();
+            cc.setIndexedTypes(Integer.class, Entry.class);
 
-            Random rnd = new Random();
+            try (IgniteCache<Integer, Entry> c = ignite.createCache(cc)) {
+                Random rnd = new Random();
 
-            WKTReader r = new WKTReader();
+                WKTReader r = new WKTReader();
 
-            for (int i = 0; i < 1000; i++) {
-                int x = rnd.nextInt(10000);
-                int y = rnd.nextInt(10000);
+                for (int i = 0; i < 1000; i++) {
+                    int x = rnd.nextInt(10000);
+                    int y = rnd.nextInt(10000);
 
-                Geometry geo = r.read("POINT(" + x + " " + y + ")");
+                    Geometry geo = r.read("POINT(" + x + " " + y + ")");
 
-                c.put(i, new Entry(geo));
-            }
+                    c.put(i, new Entry(geo));
+                }
 
-            GridCacheQuery<Map.Entry<Integer, Entry>> q = c.queries().createSqlQuery(Entry.class,
-                "coords && ?");
+                SqlQuery<Integer, Entry> q = new SqlQuery<>(Entry.class, "coords && ?");
 
-            for (int i = 0; i < 10; i++) {
-                Geometry cond = r.read("POLYGON((0 0, 0 " + rnd.nextInt(10000) + ", " +
-                    rnd.nextInt(10000) + " " + rnd.nextInt(10000) + ", " +
-                    rnd.nextInt(10000) + " 0, 0 0))");
+                for (int i = 0; i < 10; i++) {
+                    Geometry cond = r.read("POLYGON((0 0, 0 " + rnd.nextInt(10000) + ", " +
+                        rnd.nextInt(10000) + " " + rnd.nextInt(10000) + ", " +
+                        rnd.nextInt(10000) + " 0, 0 0))");
 
-                Collection<Map.Entry<Integer, Entry>> entries = q.execute(cond).get();
+                    Collection<Cache.Entry<Integer, Entry>> entries = c.query(q.setArgs(cond)).getAll();
 
-                System.out.println("Fetched points [cond=" + cond + ", cnt=" + entries.size() + ']');
+                    System.out.println("Fetched points [cond=" + cond + ", cnt=" + entries.size() + ']');
+                }
             }
         }
     }
@@ -83,7 +84,7 @@ public class SpatialQueryExample {
      */
     private static class Entry {
         /** Coordinates. */
-        @GridCacheQuerySqlField(index = true)
+        @QuerySqlField(index = true)
         private Geometry coords;
 
         /**

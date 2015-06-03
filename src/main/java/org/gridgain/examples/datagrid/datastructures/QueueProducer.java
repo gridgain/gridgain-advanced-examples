@@ -9,8 +9,8 @@
 
 package org.gridgain.examples.datagrid.datastructures;
 
-import org.gridgain.grid.*;
-import org.gridgain.grid.cache.datastructures.*;
+import org.apache.ignite.*;
+import org.apache.ignite.configuration.*;
 
 import static org.gridgain.examples.datagrid.datastructures.QueueConsumer.*;
 
@@ -19,9 +19,8 @@ import static org.gridgain.examples.datagrid.datastructures.QueueConsumer.*;
  */
 public class QueueProducer {
     public static void main(String[] args) throws Exception {
-        try (Grid g = GridGain.start("config/example-cache.xml")) {
-            final GridCacheQueue<String> queue = g.cache(CACHE_NAME).dataStructures().queue(QUEUE_NAME, QUEUE_SIZE,
-                /*colocated*/false, /*create*/true);
+        try (Ignite ignite = Ignition.start("config/example-ignite.xml")) {
+            final IgniteQueue<String> queue = ignite.queue(QUEUE_NAME, QUEUE_SIZE, new CollectionConfiguration());
 
             assert queue != null;
 

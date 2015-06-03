@@ -21,9 +21,11 @@
 
 package org.gridgain.examples.datagrid.query;
 
-import org.gridgain.grid.*;
-import org.gridgain.grid.cache.*;
-import org.gridgain.grid.cache.query.*;
+import org.apache.ignite.*;
+import org.apache.ignite.cache.*;
+import org.apache.ignite.cache.query.*;
+import org.apache.ignite.cache.query.annotations.*;
+import org.apache.ignite.configuration.*;
 
 import java.io.*;
 import java.util.*;
@@ -32,51 +34,59 @@ import java.util.*;
  * This examples shows usage of group indexes.
  * <p>
  * Remote nodes should always be started with special configuration file which
- * enables P2P class loading: {@code 'ggstart.{sh|bat} ADVANCED-EXAMPLES-DIR/config/example-cache.xml'}.
+ * enables P2P class loading: {@code 'ggstart.{sh|bat} ADVANCED-EXAMPLES-DIR/config/example-ignite.xml'}.
  */
 public class GroupIndexExample {
-    /** Employees cache name. */
-    private static final String EMPLOYEES_CACHE_NAME = "partitioned";
-
     /** Organizations cache name. */
-    private static final String ORG_CACHE_NAME = "replicated";
+    private static final String ORG_CACHE_NAME = GroupIndexExample.class.getSimpleName() + "-organizations";
+
+    /** Employees cache name. */
+    private static final String EMPLOYEES_CACHE_NAME = GroupIndexExample.class.getSimpleName() + "-employees";
 
     /**
      * @param args Command line arguments, none required.
-     * @throws GridException If example execution failed.
      */
     public static void main(String[] args) throws Exception {
-        try (Grid g = GridGain.start("config/example-cache.xml")) {
-            initialize();
+        try (Ignite ignite = Ignition.start("config/example-ignite.xml")) {
+            CacheConfiguration<UUID, Organization> orgCacheCfg = new CacheConfiguration<>(ORG_CACHE_NAME);
 
-            GridCacheProjection<UUID, Employee> employeeCache = GridGain.grid().cache(EMPLOYEES_CACHE_NAME);
+            orgCacheCfg.setCacheMode(CacheMode.REPLICATED);
+            orgCacheCfg.setIndexedTypes(UUID.class, Organization.class);
 
-            GridCacheQuery<?> q = employeeCache.queries().createSqlFieldsQuery(
-                "select Employee.firstName, Employee.lastName, Employee.salary, Organization.name " +
-                    "from \"partitioned\".Employee, \"replicated\".Organization " +
-                    "where Employee.orgId=Organization.id and Employee.salary > 1000");
+            CacheConfiguration<UUID, Employee> empCacheCfg = new CacheConfiguration<>(EMPLOYEES_CACHE_NAME);
 
-            System.out.println("Query results: ");
-            System.out.println(q.execute().get());
+            empCacheCfg.setCacheMode(CacheMode.PARTITIONED);
+            empCacheCfg.setIndexedTypes(UUID.class, Employee.class);
+
+            try (
+                IgniteCache<UUID, Organization> orgCache = ignite.createCache(orgCacheCfg);
+                IgniteCache<UUID, Employee> empCache = ignite.createCache(empCacheCfg)
+            ) {
+                initialize(ignite);
+
+                SqlFieldsQuery q = new SqlFieldsQuery(
+                    "select e.firstName, e.lastName, e.salary, o.name " +
+                    "from Employee e, \"" + ORG_CACHE_NAME + "\".Organization o " +
+                    "where e.orgId = o.id and e.salary > 1000");
+
+                System.out.println("Query results: ");
+                System.out.println(empCache.query(q).getAll());
+            }
         }
     }
 
     /**
      * Populate cache with test data.
      *
-     * @throws GridException In case of error.
      * @throws InterruptedException In case of error.
      */
-    private static void initialize() throws GridException, InterruptedException {
-        GridCacheProjection<UUID, Organization> orgCache = GridGain.grid().cache(ORG_CACHE_NAME);
-
-        // Employees will be collocated with their organizations since
-        // Organizations are stored in replicated cache.
-        GridCacheProjection<UUID, Employee> employeeCache = GridGain.grid().cache(EMPLOYEES_CACHE_NAME);
+    private static void initialize(Ignite ignite) throws InterruptedException {
+        IgniteCache<UUID, Organization> orgCache = ignite.cache(ORG_CACHE_NAME);
+        IgniteCache<UUID, Employee> employeeCache = ignite.cache(EMPLOYEES_CACHE_NAME);
 
         // Clear caches before running example.
-        employeeCache.globalClearAll();
-        orgCache.globalClearAll();
+        employeeCache.clear();
+        orgCache.clear();
 
         // Organizations.
         Organization org1 = new Organization("GridGain");
@@ -104,26 +114,26 @@ public class GroupIndexExample {
     /**
      * Employee.
      */
-    @GridCacheQueryGroupIndex.List(
-        @GridCacheQueryGroupIndex(name = "idx1") // Find employee of organization with passed salary.
+    @QueryGroupIndex.List(
+        @QueryGroupIndex(name = "idx1") // Find employee of organization with passed salary.
     )
     private static class Employee implements Serializable {
         /** Last name. */
-        @GridCacheQuerySqlField(index = true)
+        @QuerySqlField(index = true)
         private String firstName;
 
         /** Last name. */
-        @GridCacheQuerySqlField(index = true)
+        @QuerySqlField(index = true)
         private String lastName;
 
         /** Organization ID (indexed). */
-        @GridCacheQuerySqlField(index = true)
-        @GridCacheQuerySqlField.Group(name = "idx1", order = 0)
+        @QuerySqlField(index = true)
+        @QuerySqlField.Group(name = "idx1", order = 0)
         private UUID orgId;
 
         /** Salary (indexed). */
-        @GridCacheQuerySqlField(index = true)
-        @GridCacheQuerySqlField.Group(name = "idx1", order = 1)
+        @QuerySqlField(index = true)
+        @QuerySqlField.Group(name = "idx1", order = 1)
         private double salary;
 
         /**
@@ -153,11 +163,11 @@ public class GroupIndexExample {
      */
     private static class Organization implements Serializable {
         /** Organization ID (indexed). */
-        @GridCacheQuerySqlField(index = true)
+        @QuerySqlField(index = true)
         private UUID id;
 
         /** Organization name (indexed). */
-        @GridCacheQuerySqlField(index = true)
+        @QuerySqlField(index = true)
         private String name;
 
         /**

@@ -21,73 +21,72 @@
 
 package org.gridgain.examples.datagrid.query;
 
-import org.gridgain.grid.*;
-import org.gridgain.grid.cache.*;
-import org.gridgain.grid.cache.query.*;
-import org.gridgain.grid.lang.*;
+import org.apache.ignite.*;
+import org.apache.ignite.cache.*;
+import org.apache.ignite.cache.query.*;
 
-import java.util.*;
+import javax.cache.*;
+import javax.cache.event.*;
 
 /**
  * This examples demonstrates continuous query API.
  * <p>
  * Remote nodes should always be started with special configuration file which
- * enables P2P class loading: {@code 'ggstart.{sh|bat} ADVANCED-EXAMPLES-DIR/config/example-cache.xml'}.
+ * enables P2P class loading: {@code 'ggstart.{sh|bat} ADVANCED-EXAMPLES-DIR/config/example-ignite.xml'}.
  */
 public class ContinuousQueryExample {
     /** Cache name. */
-    private static final String CACHE_NAME = "partitioned";
+    private static final String CACHE_NAME = ContinuousQueryExample.class.getSimpleName();
 
     /**
      * Executes example.
      *
      * @param args Command line arguments, none required.
-     * @throws GridException If example execution failed.
      */
-    public static void main(String[] args) throws GridException, InterruptedException {
-        try (Grid g = GridGain.start("config/example-cache.xml")) {
+    public static void main(String[] args) throws InterruptedException {
+        try (Ignite ignite = Ignition.start("config/example-ignite.xml")) {
             System.out.println();
             System.out.println(">>> Cache continuous query example started.");
 
-            GridCache<Integer, String> cache = g.cache(CACHE_NAME);
+            try (IgniteCache<Integer, String> cache = ignite.createCache(CACHE_NAME)) {
+                int keyCnt = 20;
 
-            // Clear caches before running example.
-            cache.globalClearAll();
+                for (int i = 0; i < keyCnt; i++)
+                    cache.put(i, Integer.toString(i));
 
-            int keyCnt = 20;
-
-            for (int i = 0; i < keyCnt; i++)
-                cache.putx(i, Integer.toString(i));
-
-            // Create new continuous query.
-            try (GridCacheContinuousQuery<Integer, String> qry = cache.queries().createContinuousQuery()) {
-                // Callback that is called locally when update notifications are received.
-                qry.callback(new GridBiPredicate<UUID, Collection<Map.Entry<Integer, String>>>() {
-                    @Override public boolean apply(UUID nodeId, Collection<Map.Entry<Integer, String>> entries) {
-                        for (Map.Entry<Integer, String> e : entries)
-                            System.out.println("Queried entry [key=" + e.getKey() + ", val=" + e.getValue() + ']');
-
-                        return true; // Return true to continue listening.
-                    }
-                });
+                // Create new continuous query.
+                ContinuousQuery<Integer, String> qry = new ContinuousQuery<>();
 
                 // This filter will be evaluated remotely on all nodes
                 // Entry that pass this filter will be sent to the caller.
-                qry.filter(new GridBiPredicate<Integer, String>() {
-                    @Override public boolean apply(Integer key, String val) {
-                        return key > 15;
+                qry.setRemoteFilter(new CacheEntryEventSerializableFilter<Integer, String>() {
+                    @Override public boolean evaluate(CacheEntryEvent<? extends Integer, ? extends String> event) {
+                        return event.getKey() > 15;
                     }
                 });
 
+                // Callback that is called locally when update notifications are received.
+                qry.setLocalListener(new CacheEntryUpdatedListener<Integer, String>() {
+                    @Override public void onUpdated(Iterable<CacheEntryEvent<? extends Integer, ? extends String>> events) {
+                        for (CacheEntryEvent<? extends Integer, ? extends String> e : events)
+                            System.out.println("Queried entry [key=" + e.getKey() + ", val=" + e.getValue() + ']');
+                    }
+                });
+
+                qry.setInitialQuery(new ScanQuery<Integer, String>());
+
                 // Execute query.
-                qry.execute();
+                try (QueryCursor<Cache.Entry<Integer, String>> cur = cache.query(qry)) {
+                    for (Cache.Entry<Integer, String> e : cur)
+                        System.out.println("Iterated entry [key=" + e.getKey() + ", val=" + e.getValue() + ']');
 
-                // Add a few more keys and watch more query notifications.
-                for (int i = keyCnt; i < keyCnt + 5; i++)
-                    cache.putx(i, Integer.toString(i));
+                    // Add a few more keys and watch more query notifications.
+                    for (int i = keyCnt; i < keyCnt + 5; i++)
+                        cache.put(i, Integer.toString(i));
 
-                // Wait for a while while callback is notified about remaining puts.
-                Thread.sleep(2000);
+                    // Wait for a while while callback is notified about remaining puts.
+                    Thread.sleep(2000);
+                }
             }
         }
     }

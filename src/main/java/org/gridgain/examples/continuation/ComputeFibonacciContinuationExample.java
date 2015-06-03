@@ -21,52 +21,41 @@
 
 package org.gridgain.examples.continuation;
 
-import org.gridgain.grid.*;
-import org.gridgain.grid.compute.*;
-import org.gridgain.grid.lang.*;
-import org.gridgain.grid.resources.*;
+import org.apache.ignite.*;
+import org.apache.ignite.compute.*;
+import org.apache.ignite.lang.*;
+import org.apache.ignite.resources.*;
 import org.jetbrains.annotations.*;
 
 import java.math.*;
-import java.util.*;
+import java.util.concurrent.*;
 
 /**
  * This example demonstrates how to use continuation feature of GridGain by
  * performing the distributed recursive calculation of {@code 'Fibonacci'}
  * numbers on the grid. Continuations
- * functionality is exposed via {@link GridComputeJobContext#holdcc()} and
- * {@link GridComputeJobContext#callcc()} method calls in {@link FibonacciClosure} class.
+ * functionality is exposed via {@link ComputeJobContext#holdcc()} and
+ * {@link ComputeJobContext#callcc()} method calls in {@link FibonacciClosure} class.
  * <p>
  * Remote nodes should always be started with special configuration file which
- * enables P2P class loading: {@code 'ggstart.{sh|bat} config/example-compute.xml'}.
+ * enables P2P class loading: {@code 'ggstart.{sh|bat} config/example-ignite.xml'}.
  */
 public final class ComputeFibonacciContinuationExample {
     /**
      * Executes example.
      *
      * @param args Command line arguments, none required.
-     * @throws GridException If example execution failed.
      */
-    public static void main(String[] args) throws GridException {
-        try (Grid g = GridGain.start("config/example-compute.xml")) {
+    public static void main(String[] args) {
+        try (Ignite ignite = Ignition.start("config/example-ignite.xml")) {
             System.out.println();
             System.out.println("Compute Fibonacci continuation example started.");
 
             long N = 100;
 
-            final UUID exampleNodeId = g.localNode().id();
-
-            // Filter to exclude this node from execution.
-            final GridPredicate<GridNode> nodeFilter = new GridPredicate<GridNode>() {
-                @Override public boolean apply(GridNode n) {
-                    // Give preference to remote nodes.
-                    return g.forRemotes().nodes().isEmpty() || !n.id().equals(exampleNodeId);
-                }
-            };
-
             long start = System.currentTimeMillis();
 
-            BigInteger fib = g.forPredicate(nodeFilter).compute().apply(new FibonacciClosure(nodeFilter), N).get();
+            BigInteger fib = ignite.compute().apply(new FibonacciClosure(), N);
 
             long duration = System.currentTimeMillis() - start;
 
@@ -83,30 +72,20 @@ public final class ComputeFibonacciContinuationExample {
     /**
      * Closure to execute.
      */
-    private static class FibonacciClosure implements GridClosure<Long, BigInteger> {
+    private static class FibonacciClosure implements IgniteClosure<Long, BigInteger> {
         /** Future for spawned task. */
-        private GridFuture<BigInteger> fut1;
+        private IgniteFuture<BigInteger> fut1;
 
         /** Future for spawned task. */
-        private GridFuture<BigInteger>fut2;
+        private IgniteFuture<BigInteger> fut2;
 
         /** Auto-inject job context. */
-        @GridJobContextResource
-        private GridComputeJobContext jobCtx;
+        @JobContextResource
+        private ComputeJobContext jobCtx;
 
         /** Auto-inject grid instance. */
-        @GridInstanceResource
-        private Grid g;
-
-        /** Predicate. */
-        private final GridPredicate<GridNode> nodeFilter;
-
-        /**
-         * @param nodeFilter Predicate to filter nodes.
-         */
-        FibonacciClosure(GridPredicate<GridNode> nodeFilter) {
-            this.nodeFilter = nodeFilter;
-        }
+        @IgniteInstanceResource
+        private Ignite ignite;
 
         /** {@inheritDoc} */
         @Nullable @Override public BigInteger apply(Long n) {
@@ -121,26 +100,24 @@ public final class ComputeFibonacciContinuationExample {
                     return n == 0 ? BigInteger.ZERO : BigInteger.ONE;
 
                 // Node-local storage.
-                GridNodeLocalMap<Long, GridFuture<BigInteger>> locMap = g.nodeLocalMap();
+                ConcurrentMap<Long, IgniteFuture<BigInteger>> locMap = ignite.cluster().nodeLocalMap();
 
                 // Check if value is cached in node-local-map first.
                 fut1 = locMap.get(n - 1);
                 fut2 = locMap.get(n - 2);
 
-                GridProjection p = g.forPredicate(nodeFilter);
-
                 // If future is not cached in node-local-map, cache it.
                 if (fut1 == null)
-                    fut1 = locMap.addIfAbsent(n - 1, p.compute().apply(new FibonacciClosure(nodeFilter), n - 1));
+                    fut1 = execute(n - 1);
 
                 // If future is not cached in node-local-map, cache it.
                 if (fut2 == null)
-                    fut2 = locMap.addIfAbsent(n - 2, p.compute().apply(new FibonacciClosure(nodeFilter), n - 2));
+                    fut2 = execute(n - 2);
 
                 // If futures are not done, then wait asynchronously for the result
                 if (!fut1.isDone() || !fut2.isDone()) {
-                    GridInClosure<GridFuture<BigInteger>> lsnr = new GridInClosure<GridFuture<BigInteger>>() {
-                        @Override public void apply(GridFuture<BigInteger> f) {
+                    IgniteInClosure<IgniteFuture<BigInteger>> lsnr = new IgniteInClosure<IgniteFuture<BigInteger>>() {
+                        @Override public void apply(IgniteFuture<BigInteger> f) {
                             // If both futures are done, resume the continuation.
                             if (fut1.isDone() && fut2.isDone())
                                 // CONTINUATION:
@@ -158,8 +135,8 @@ public final class ComputeFibonacciContinuationExample {
                     jobCtx.holdcc();
 
                     // Attach the same listener to both futures.
-                    fut1.listenAsync(lsnr);
-                    fut2.listenAsync(lsnr);
+                    fut1.listen(lsnr);
+                    fut2.listen(lsnr);
 
                     return null;
                 }
@@ -168,12 +145,30 @@ public final class ComputeFibonacciContinuationExample {
             assert fut1.isDone() && fut2.isDone();
 
             // Return cached results.
-            try {
-                return fut1.get().add(fut2.get());
+            return fut1.get().add(fut2.get());
+        }
+
+        private IgniteFuture<BigInteger> execute(long n) {
+            // Node-local storage.
+            ConcurrentMap<Long, IgniteFuture<BigInteger>> locMap = ignite.cluster().nodeLocalMap();
+
+            // Asynchronous compute interface.
+            IgniteCompute compute = ignite.compute().withAsync();
+
+            IgniteFuture<BigInteger> fut = locMap.get(n - 1);
+
+            if (fut == null) {
+                compute.apply(new FibonacciClosure(), n - 1);
+
+                fut = compute.future();
+
+                IgniteFuture<BigInteger> old = locMap.putIfAbsent(n - 1, fut);
+
+                if (old != null)
+                    fut = old;
             }
-            catch (GridException e) {
-                throw new GridRuntimeException(e);
-            }
+
+            return fut;
         }
     }
 }

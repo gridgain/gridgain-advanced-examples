@@ -21,10 +21,10 @@
 
 package org.gridgain.examples.datagrid.query;
 
-import org.gridgain.grid.*;
-import org.gridgain.grid.cache.*;
-import org.gridgain.grid.cache.query.*;
-import org.gridgain.grid.spi.indexing.h2.*;
+import org.apache.ignite.*;
+import org.apache.ignite.cache.query.*;
+import org.apache.ignite.cache.query.annotations.*;
+import org.apache.ignite.configuration.*;
 
 import java.util.*;
 
@@ -36,55 +36,31 @@ import java.util.*;
  * {@link Functions} on class path and are configured in the same way.
  */
 public class CustomSqlFunctionsExample {
+    /** */
+    private static final String CACHE_NAME = CustomSqlFunctionsExample.class.getSimpleName();
+
     /**
      * @param args Args.
-     * @throws GridException If failed.
      */
-    public static void main(String[] args) throws GridException {
-        try (Grid g = GridGain.start(configuration())) {
-            Random r = new Random();
+    public static void main(String[] args) {
+        try (Ignite ignite = Ignition.start("config/example-ignite.xml")) {
+            CacheConfiguration<Integer, Integer> cc = new CacheConfiguration<>(CACHE_NAME);
 
-            GridCache<Integer, Integer> c = g.cache(null);
+            cc.setIndexedTypes(Integer.class, Integer.class);
+            cc.setSqlFunctionClasses(Functions.class);
 
-            // Clear caches before running example.
-            c.globalClearAll();
+            try (IgniteCache<Integer, Integer> c = ignite.createCache(cc)) {
+                Random r = new Random();
 
-            for (int i = 0; i < 10; i++)
-                c.put(r.nextInt(1000), r.nextInt(1000));
+                for (int i = 0; i < 10; i++)
+                    c.put(r.nextInt(1000), r.nextInt(1000));
 
-            GridCacheQuery<List<?>> q = c.queries().createSqlFieldsQuery("select square(_val) from Integer");
+                SqlFieldsQuery q = new SqlFieldsQuery("select _val, square(_val) from Integer");
 
-            System.out.println();
-            System.out.println("Rows count examined with query: " +
-                q.enableDedup(true).execute().get().size());
+                for (List<?> row : c.query(q))
+                    System.out.println(row.get(0) + " -> " + row.get(1));
+            }
         }
-    }
-
-    /**
-     * @return Configuration.
-     */
-    private static GridConfiguration configuration() {
-        GridConfiguration c = new GridConfiguration();
-
-        c.setLocalHost("127.0.0.1");
-        c.setPeerClassLoadingEnabled(true);
-
-        GridCacheConfiguration cc = new GridCacheConfiguration();
-
-        cc.setQueryIndexEnabled(true);
-
-        c.setCacheConfiguration(cc);
-
-        // Configure indexing SPI...
-        GridH2IndexingSpi idxSpi = new GridH2IndexingSpi();
-
-        // ...and set custom function classes.
-        idxSpi.setIndexCustomFunctionClasses(Functions.class);
-        idxSpi.setDefaultIndexPrimitiveValue(true);
-
-        c.setIndexingSpi(idxSpi);
-
-        return c;
     }
 
     /**
@@ -97,7 +73,7 @@ public class CustomSqlFunctionsExample {
          * @param x Argument.
          * @return Square of given value.
          */
-        @GridCacheQuerySqlFunction
+        @QuerySqlFunction
         public static int square(int x) {
             System.out.println("Custom function has been called with argument: " + x);
 

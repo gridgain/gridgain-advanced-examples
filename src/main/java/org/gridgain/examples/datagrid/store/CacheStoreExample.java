@@ -21,12 +21,16 @@
 
 package org.gridgain.examples.datagrid.store;
 
-import org.gridgain.grid.*;
-import org.gridgain.grid.cache.*;
-import org.gridgain.grid.logger.*;
+import org.apache.ignite.*;
+import org.apache.ignite.cache.*;
+import org.apache.ignite.configuration.*;
+import org.apache.ignite.transactions.*;
 
-import static org.gridgain.grid.cache.GridCacheTxConcurrency.*;
-import static org.gridgain.grid.cache.GridCacheTxIsolation.*;
+import javax.cache.configuration.*;
+import java.util.concurrent.locks.*;
+
+import static org.apache.ignite.transactions.TransactionConcurrency.*;
+import static org.apache.ignite.transactions.TransactionIsolation.*;
 
 /**
  * Demonstrates cache store with and without write-through.
@@ -36,90 +40,77 @@ import static org.gridgain.grid.cache.GridCacheTxIsolation.*;
  * {@link CacheMongoStore} and {@link Employee} on class path.
  */
 public class CacheStoreExample {
+    /** */
+    private static final String CACHE_NAME = CacheStoreExample.class.getSimpleName();
+
     /**
      * Test cache store.
      *
      * @param args Nothing.
-     * @throws GridException If failed.
      */
-    public static void main(String[] args) throws GridException {
+    public static void main(String[] args) {
         // Disable quite logging.
         System.setProperty("GRIDGAIN_QUIET", "false");
 
-        testStore(false);
-        testStore(true);
+        try (Ignite ignite = Ignition.start("config/example-ignite.xml")) {
+            testStore(ignite, false);
+            testStore(ignite, true);
+        }
     }
 
     /**
      * Tests store with write-behind either turned on or off.
      *
      * @param writeBehind Write-behind flag.
-     * @throws GridException If failed.
      */
-    private static void testStore(boolean writeBehind) throws GridException {
+    private static void testStore(Ignite ignite, boolean writeBehind) {
         log(">>>");
         log(">>> Testing store with write-behind=" + writeBehind);
         log(">>>");
 
-        GridConfiguration c = new GridConfiguration();
+        CacheConfiguration<Long, Employee> cc = new CacheConfiguration<>(CACHE_NAME);
 
-        c.setLocalHost("localhost");
-        c.setPeerClassLoadingEnabled(true);
-
-        GridCacheConfiguration cc = new GridCacheConfiguration();
-
-        cc.setName("test");
-        cc.setAtomicityMode(GridCacheAtomicityMode.TRANSACTIONAL);
-        cc.setCacheMode(GridCacheMode.PARTITIONED);
-        cc.setStore(new CacheMongoStore());
+        cc.setAtomicityMode(CacheAtomicityMode.TRANSACTIONAL);
+        cc.setCacheStoreFactory(FactoryBuilder.factoryOf(CacheMongoStore.class));
 
         // Set write-behind flag.
         cc.setWriteBehindEnabled(writeBehind);
-        cc.setWriteBehindFlushFrequency(3000);
 
-        c.setCacheConfiguration(cc);
-
-        try (Grid g = GridGain.start(c)) {
-            GridCache<Long, Employee> cache = g.cache("test");
-
-            // Clear cache before running example.
-            cache.globalClearAll();
-
-            atomicExample(g);
-            transactionExample(g);
-            lockExample(g);
+        try (IgniteCache<Long, Employee> cache = ignite.createCache(cc)) {
+            atomicExample(ignite);
+            transactionExample(ignite);
+            lockExample(ignite);
         }
     }
 
     /**
      * Atomic example.
      *
-     * @param g Grid.
-     * @throws GridException If failed.
+     * @param ignite Ignite.
      */
-    private static void atomicExample(Grid g) throws GridException {
+    private static void atomicExample(Ignite ignite) {
         log(">>>");
         log(">>> Atomic example.");
         log(">>>");
 
-        GridCache<Long, Employee> cache = g.cache("test");
+        IgniteCache<Long, Employee> cache = ignite.cache(CACHE_NAME);
 
-        GridLogger log = g.log().getLogger(CacheStoreExample.class);
+        IgniteLogger log = ignite.log().getLogger(CacheStoreExample.class);
 
         int cnt = 10;
 
         for (long i = 1; i <= cnt; i++)
-            cache.putx(i, new Employee(i, "Name-" + i, i * 1000));
+            cache.put(i, new Employee(i, "Name-" + i, i * 1000));
 
         // Evict every other employee.
-        for (long i = 1; i <= cnt; i+= 2) {
-            cache.evict(i);
+        for (long i = 1; i <= cnt; i += 2) {
+            cache.clear(i);
 
             log(log, "Evicted key: " + i);
         }
 
         for (long i = 1; i <= cnt; i++)
-            log(log, "Peeked at [key=" + i + ", val=" + cache.peek(i) + ']');
+            log(log, "Peeked at [key=" + i + ", val=" + cache.localPeek(i) + ']');
 
         for (long i = 1; i <= cnt; i++)
             log(log, "Got [key=" + i + ", val=" + cache.get(i) + ']');
@@ -128,34 +119,33 @@ public class CacheStoreExample {
     /**
      * Transactional example which acquires pessimistic locks.
      *
-     * @param g Grid.
-     * @throws GridException If failed.
+     * @param ignite Ignite.
      */
-    private static void transactionExample(Grid g) throws GridException {
+    private static void transactionExample(Ignite ignite) {
         log(">>>");
         log(">>> Transactional example.");
         log(">>>");
 
-        GridCache<Long, Employee> cache = g.cache("test");
+        IgniteCache<Long, Employee> cache = ignite.cache(CACHE_NAME);
 
-        GridLogger log = g.log().getLogger(CacheStoreExample.class);
+        IgniteLogger log = ignite.log().getLogger(CacheStoreExample.class);
 
         int cnt = 10;
 
-        try (GridCacheTx tx = cache.txStart(PESSIMISTIC, REPEATABLE_READ)) {
+        try (Transaction tx = ignite.transactions().txStart(PESSIMISTIC, REPEATABLE_READ)) {
             // This will acquire pessimistic lock on all accessed employees.
             for (long i = 1; i <= cnt; i++)
-                cache.putx(i, new Employee(i, "Name-" + i, i * 1000));
+                cache.put(i, new Employee(i, "Name-" + i, i * 1000));
 
             // Evict every other employee.
             for (long i = 1; i <= cnt; i += 2) {
-                cache.evict(i);
+                cache.clear(i);
 
                 log(log, "Evicted key: " + i);
             }
 
             for (long i = 1; i <= cnt; i++)
-                log(log, "Peeked at [key=" + i + ", val=" + cache.peek(i) + ']');
+                log(log, "Peeked at [key=" + i + ", val=" + cache.localPeek(i) + ']');
 
             for (long i = 1; i <= cnt; i++)
                 log(log, "Got [key=" + i + ", val=" + cache.get(i) + ']');
@@ -169,42 +159,43 @@ public class CacheStoreExample {
      * Lock example which acquires a lock on cache and performs all operations
      * under a single lock.
      *
-     * @param g Grid.
-     * @throws GridException If failed.
+     * @param ignite Ignite.
      */
-    private static void lockExample(Grid g) throws GridException {
+    private static void lockExample(Ignite ignite) {
         log(">>>");
         log(">>> Lock example.");
         log(">>>");
 
-        GridCache<Long, Employee> cache = g.cache("test");
+        IgniteCache<Long, Employee> cache = ignite.cache(CACHE_NAME);
 
-        GridLogger log = g.log().getLogger(CacheStoreExample.class);
+        IgniteLogger log = ignite.log().getLogger(CacheStoreExample.class);
 
         int cnt = 10;
 
         // Acquire a single lock.
-        cache.lock(/*key*/0L, /*timeout*/0L);
+        Lock lock = cache.lock(0L);
+
+        lock.lock();
 
         try {
             for (long i = 1; i <= cnt; i++)
-                cache.putx(i, new Employee(i, "Name-" + i, i * 1000));
+                cache.put(i, new Employee(i, "Name-" + i, i * 1000));
 
             // Evict every other employee.
             for (long i = 1; i <= cnt; i += 2) {
-                cache.evict(i);
+                cache.clear(i);
 
                 log(log, "Evicted key: " + i);
             }
 
             for (long i = 1; i <= cnt; i++)
-                log(log, "Peeked at [key=" + i + ", val=" + cache.peek(i) + ']');
+                log(log, "Peeked at [key=" + i + ", val=" + cache.localPeek(i) + ']');
 
             for (long i = 1; i <= cnt; i++)
                 log(log, "Got [key=" + i + ", val=" + cache.get(i) + ']');
         }
         finally {
-            cache.unlock(/*key*/0L);
+            lock.unlock();
         }
     }
 
@@ -223,7 +214,7 @@ public class CacheStoreExample {
      * @param log Log.
      * @param msg Message to log.
      */
-    private static void log(GridLogger log, String msg) {
+    private static void log(IgniteLogger log, String msg) {
         if (log == null)
             System.out.println(msg);
         else

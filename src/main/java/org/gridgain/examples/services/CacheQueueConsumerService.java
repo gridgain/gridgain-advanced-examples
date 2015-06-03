@@ -21,31 +21,34 @@
 
 package org.gridgain.examples.services;
 
-import org.gridgain.grid.*;
-import org.gridgain.grid.cache.datastructures.*;
-import org.gridgain.grid.resources.*;
-import org.gridgain.grid.service.*;
+import org.apache.ignite.*;
+import org.apache.ignite.configuration.*;
+import org.apache.ignite.resources.*;
+import org.apache.ignite.services.*;
 
 import static org.gridgain.examples.services.CacheServiceExampleUtils.*;
 
 /**
  * Cache queue consumer service.
  */
-public class CacheQueueConsumerService implements GridService {
+public class CacheQueueConsumerService implements Service {
     /** Injected grid. */
-    @GridInstanceResource
-    protected Grid grid;
+    @IgniteInstanceResource
+    protected Ignite ignite;
 
     /** {@inheritDoc} */
-    @Override public void cancel(GridServiceContext ctx) {
+    @Override public void cancel(ServiceContext ctx) {
         // No-op.
     }
 
     /** {@inheritDoc} */
-    @Override public void execute(GridServiceContext ctx) throws Exception {
-        GridCacheDataStructures ds = grid.cache(CACHE_NAME).dataStructures();
+    @Override public void init(ServiceContext ctx) throws Exception {
+        // No-op.
+    }
 
-        GridCacheQueue<String> queue = ds.queue(QUEUE_NAME, QUEUE_SIZE, false, true);
+    /** {@inheritDoc} */
+    @Override public void execute(ServiceContext ctx) throws Exception {
+        IgniteQueue<String> queue = ignite.queue(QUEUE_NAME, QUEUE_SIZE, new CollectionConfiguration());
 
         while (!ctx.isCancelled()) {
             String item = queue.take();

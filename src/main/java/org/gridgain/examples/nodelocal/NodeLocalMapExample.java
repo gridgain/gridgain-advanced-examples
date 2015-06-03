@@ -9,10 +9,11 @@
 
 package org.gridgain.examples.nodelocal;
 
-import org.gridgain.grid.*;
-import org.gridgain.grid.lang.*;
+import org.apache.ignite.*;
+import org.apache.ignite.lang.*;
 
 import java.util.*;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
 
 /**
@@ -27,15 +28,19 @@ public class NodeLocalMapExample {
      * @throws Exception If failed.
      */
     public static void main(String[] args) throws Exception {
-        try (final Grid g = GridGain.start("config/example-cache.xml")) {
-            GridRunnable runnable = new GridRunnable() {
+        try (final Ignite ignite = Ignition.start("config/example-ignite.xml")) {
+            IgniteRunnable runnable = new IgniteRunnable() {
                 @Override public void run() {
-                    GridNodeLocalMap<String, AtomicInteger> locMap = g.nodeLocalMap();
+                    ConcurrentMap<String, AtomicInteger> locMap = ignite.cluster().nodeLocalMap();
 
                     AtomicInteger cntr = locMap.get(COUNTER_KEY);
 
-                    if (cntr == null)
-                        cntr = locMap.addIfAbsent(COUNTER_KEY, new AtomicInteger());
+                    if (cntr == null) {
+                        AtomicInteger old = locMap.putIfAbsent(COUNTER_KEY, cntr = new AtomicInteger());
+
+                        if (old != null)
+                            cntr = old;
+                    }
 
                     int execs = cntr.incrementAndGet();
 
@@ -46,11 +51,11 @@ public class NodeLocalMapExample {
             int execCnt = 10;
 
             for (int i = 0; i < execCnt; i++)
-                g.forRandom().compute().run(runnable).get();
+                ignite.compute(ignite.cluster().forRandom()).run(runnable);
 
-            GridFuture<Collection<Integer>> qryFut = g.compute().broadcast(new GridCallable<Integer>() {
+            Collection<Integer> col = ignite.compute().broadcast(new IgniteCallable<Integer>() {
                 @Override public Integer call() throws Exception {
-                    GridNodeLocalMap<String, AtomicInteger> locMap = g.nodeLocalMap();
+                    ConcurrentMap<String, AtomicInteger> locMap = ignite.cluster().nodeLocalMap();
 
                     AtomicInteger cnt = locMap.get(COUNTER_KEY);
 
@@ -60,7 +65,7 @@ public class NodeLocalMapExample {
 
             int sum = 0;
 
-            for (Integer c : qryFut.get())
+            for (Integer c : col)
                 sum += c;
 
             System.out.println("Execution count [expected=" + execCnt + ", actual=" + sum + ']');

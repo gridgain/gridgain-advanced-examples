@@ -9,19 +9,14 @@
 
 package org.gridgain.examples.datagrid.datastructures;
 
-import org.gridgain.grid.*;
-import org.gridgain.grid.cache.*;
-import org.gridgain.grid.cache.datastructures.*;
-import org.gridgain.grid.lang.*;
-import org.gridgain.grid.util.lang.*;
+import org.apache.ignite.*;
+import org.apache.ignite.cluster.*;
+import org.apache.ignite.lang.*;
 
 /**
  * Example shows how to use AtomicLong.
  */
 public class AtomicLongExample {
-    /** Cache name. */
-    public static final String CACHE_NAME = "partitioned_tx";
-
     /** Execution counter. */
     public static final String ATOMIC_LONG_NAME = "ExecCounter";
 
@@ -30,44 +25,34 @@ public class AtomicLongExample {
      * @throws Exception If failed.
      */
     public static void main(String[] args) throws Exception {
-        try (final Grid g = GridGain.start("config/example-cache.xml")) {
-            final GridCache<Object, Object> cache = g.cache(CACHE_NAME);
+        try (final Ignite ignite = Ignition.start("config/example-ignite.xml")) {
+            IgniteAtomicLong cntr = ignite.atomicLong(ATOMIC_LONG_NAME, 0, /*create*/true);
 
-            // Clear caches before running example.
-            cache.globalClearAll();
-
-            GridCacheDataStructures ds = cache.dataStructures();
-
-            GridCacheAtomicLong cntr = ds.atomicLong(ATOMIC_LONG_NAME, 0, /*create*/true);
+            assert cntr != null;
 
             try {
-                assert cntr != null;
-
-                GridRunnable runnable = new GridRunnable() {
+                IgniteRunnable runnable = new IgniteRunnable() {
                     @Override public void run() {
-                        try {
-                            GridCacheAtomicLong cntr = cache.dataStructures().atomicLong(
-                                ATOMIC_LONG_NAME, 0, /*create*/false);
+                        IgniteAtomicLong cntr = ignite.atomicLong(ATOMIC_LONG_NAME, 0, /*create*/false);
 
-                            assert cntr != null;
+                        assert cntr != null;
 
-                            cntr.incrementAndGet();
-                        }
-                        catch (GridException e) {
-                            throw new GridClosureException(e);
-                        }
+                        cntr.incrementAndGet();
                     }
                 };
 
                 int cnt = 50;
 
-                for (int i = 0; i < cnt; i++)
-                    g.forRandom().compute().run(runnable).get();
+                for (int i = 0; i < cnt; i++) {
+                    ClusterGroup grp = ignite.cluster().forRandom();
+
+                    ignite.compute(grp).run(runnable);
+                }
 
                 System.out.println("Execution count [expected=" + cnt + ", actual=" + cntr.get() + ']');
             }
             finally {
-                ds.removeAtomicLong(ATOMIC_LONG_NAME);
+                cntr.close();
             }
         }
     }

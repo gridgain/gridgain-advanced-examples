@@ -21,58 +21,59 @@
 
 package org.gridgain.examples.datagrid.transaction;
 
-import org.gridgain.examples.datagrid.*;
-import org.gridgain.grid.*;
-import org.gridgain.grid.cache.*;
+import org.apache.ignite.*;
+import org.apache.ignite.cache.*;
+import org.apache.ignite.configuration.*;
+import org.apache.ignite.transactions.*;
+import org.gridgain.examples.*;
 
 import java.io.*;
 
-import static org.gridgain.grid.cache.GridCacheFlag.*;
-import static org.gridgain.grid.cache.GridCacheTxConcurrency.*;
-import static org.gridgain.grid.cache.GridCacheTxIsolation.*;
+import static org.apache.ignite.transactions.TransactionConcurrency.*;
+import static org.apache.ignite.transactions.TransactionIsolation.*;
 
 /**
  * Demonstrates how to use cache transactions.
  * <p>
  * Remote nodes should always be started with special configuration file which
- * enables P2P class loading: {@code 'ggstart.{sh|bat} ADVANCED-EXAMPLES-DIR/config/example-cache.xml'}
- * or {@link CacheExampleNodeStartup} can be used.
+ * enables P2P class loading: {@code 'ggstart.{sh|bat} ADVANCED-EXAMPLES-DIR/config/example-ignite.xml'}
+ * or {@link ExampleNodeStartup} can be used.
  */
 public class CacheTransactionExample {
     /** Cache name. */
-    private static final String CACHE_NAME = "partitioned_tx";
+    private static final String CACHE_NAME = CacheTransactionExample.class.getSimpleName();
 
     /**
      * Executes example.
      *
      * @param args Command line arguments, none required.
-     * @throws GridException If example execution failed.
      */
-    public static void main(String[] args) throws GridException {
-        try (Grid g = GridGain.start("config/example-cache.xml")) {
+    public static void main(String[] args) {
+        try (Ignite ignite = Ignition.start("config/example-ignite.xml")) {
             System.out.println();
             System.out.println(">>> Cache transaction example started.");
 
-            GridCache<Long, Account> cache = g.cache(CACHE_NAME);
+            CacheConfiguration<Long, Account> cc = new CacheConfiguration<>(CACHE_NAME);
 
-            // Clear cache before running example.
-            cache.globalClearAll();
+            cc.setAtomicityMode(CacheAtomicityMode.TRANSACTIONAL);
 
-            // Initialize.
-            cache.putx(1L, new Account(1, 100));
+            try (IgniteCache<Long, Account> cache = ignite.createCache(cc)) {
+                // Initialize.
+                cache.put(1L, new Account(1, 100));
 
-            System.out.println();
-            System.out.println(">>> Account before deposit: ");
-            System.out.println(">>> " + cache.get(1L));
+                System.out.println();
+                System.out.println(">>> Account before deposit: ");
+                System.out.println(">>> " + cache.get(1L));
 
-            // Deposit $200 to account within a transaction.
-            deposit(1, 200);
+                // Deposit $200 to account within a transaction.
+                deposit(1, 200);
 
-            System.out.println();
-            System.out.println(">>> Account after deposit: ");
-            System.out.println(">>> " + cache.get(1L));
+                System.out.println();
+                System.out.println(">>> Account after deposit: ");
+                System.out.println(">>> " + cache.get(1L));
 
-            System.out.println(">>> Cache transaction example finished.");
+                System.out.println(">>> Cache transaction example finished.");
+            }
         }
     }
 
@@ -81,13 +82,13 @@ public class CacheTransactionExample {
      *
      * @param toId 'To' account ID.
      * @param amount Amount to transfer.
-     * @throws GridException If failed.
      */
-    private static void deposit(long toId, double amount) throws GridException {
-        // Clone every object we get from cache, so we can freely update it.
-        GridCacheProjection<Long, Account> cache = GridGain.grid().<Long, Account>cache(CACHE_NAME).flagsOn(CLONE);
+    private static void deposit(long toId, double amount) {
+        Ignite ignite = Ignition.ignite();
 
-        try (GridCacheTx tx = cache.txStart(PESSIMISTIC, REPEATABLE_READ)) {
+        IgniteCache<Long, Account> cache = ignite.cache(CACHE_NAME);
+
+        try (Transaction tx = ignite.transactions().txStart(PESSIMISTIC, REPEATABLE_READ)) {
             // In PESSIMISTIC mode cache objects are locked
             // automatically upon access within a transaction.
             Account acct = cache.get(toId); // Lock 'from' account first.
@@ -97,7 +98,7 @@ public class CacheTransactionExample {
             acct.update(amount);
 
             // Store updated account in cache.
-            cache.putx(toId, acct);
+            cache.put(toId, acct);
 
             tx.commit();
         }

@@ -19,23 +19,18 @@
  *  \____/   /_/     /_/   \_,__/   \____/   \__,_/  /_/   /_/ /_/
  */
 
-package org.gridgain.examples.datagrid;
+package org.gridgain.examples;
 
-import org.gridgain.grid.*;
-
-import javax.swing.*;
+import org.apache.ignite.*;
 
 /**
  *
  */
-public class CacheExampleNodeStartup {
+public class ExampleNodeStartup {
     /**
      * @param args Command line arguments, none required.
-     * @throws GridException If example execution failed.
      */
     public static void main(String[] args) throws Exception {
-        try (Grid g = GridGain.start("config/example-cache.xml")) {
-            JOptionPane.showMessageDialog(null, "Waiting for example node (press OK to stop this node).");
-        }
+        Ignition.start("config/example-ignite.xml");
     }
 }

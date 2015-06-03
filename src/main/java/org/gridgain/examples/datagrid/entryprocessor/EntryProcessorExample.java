@@ -21,123 +21,132 @@
 
 package org.gridgain.examples.datagrid.entryprocessor;
 
-import org.gridgain.examples.datagrid.*;
+import org.apache.ignite.*;
+import org.apache.ignite.cache.*;
+import org.apache.ignite.cache.query.*;
+import org.apache.ignite.configuration.*;
+import org.gridgain.examples.*;
 import org.gridgain.examples.datagrid.model.*;
-import org.gridgain.grid.*;
-import org.gridgain.grid.cache.*;
-import org.gridgain.grid.cache.query.*;
-import org.gridgain.grid.lang.*;
 
+import javax.cache.*;
+import javax.cache.processor.*;
 import java.util.*;
-import java.util.Map.*;
 
 /**
  * This example shows how to send entry manipulation logic to the remote nodes.
  * <p>
  * Remote nodes should always be started with special configuration file which
- * enables P2P class loading: {@code 'ggstart.{sh|bat} ADVANCED-EXAMPLES-DIR/config/example-cache.xml'}
- * or {@link CacheExampleNodeStartup} can be used.
+ * enables P2P class loading: {@code 'ggstart.{sh|bat} ADVANCED-EXAMPLES-DIR/config/example-ignite.xml'}
+ * or {@link ExampleNodeStartup} can be used.
  */
 public class EntryProcessorExample {
-    /** Partitioned cache name (to store employees). */
-    private static final String PARTITIONED_CACHE_NAME = "partitioned";
-
     /** Replicated cache name (to store organizations). */
-    private static final String REPLICATED_CACHE_NAME = "replicated";
+    private static final String ORG_CACHE_NAME = EntryProcessorExample.class.getSimpleName() + "-organizations";
+
+    /** Partitioned cache name (to store employees). */
+    private static final String PERSON_CACHE_NAME = EntryProcessorExample.class.getSimpleName() + "-persons";
 
     /**
      * Executes example.
      *
      * @param args Command line arguments, none required.
-     * @throws GridException If example execution failed.
      */
-    public static void main(String[] args) throws Exception {
-        try (Grid g = GridGain.start("config/example-cache.xml")) {
-            // Populate cache with data.
-            initialize();
+    public static void main(String[] args) throws InterruptedException {
+        try (Ignite ignite = Ignition.start("config/example-ignite.xml")) {
+            CacheConfiguration<Long, Organization> orgCacheCfg = new CacheConfiguration<>(ORG_CACHE_NAME);
 
-            // Organization name to query.
-            final String orgName = "GridGain";
+            orgCacheCfg.setCacheMode(CacheMode.REPLICATED);
+            orgCacheCfg.setIndexedTypes(Long.class, Organization.class);
 
-            // Output employees for a given organization.
-            GridCache<PersonKey, Person> cache = GridGain.grid().cache(PARTITIONED_CACHE_NAME);
+            CacheConfiguration<PersonKey, Person> personCacheCfg = new CacheConfiguration<>(PERSON_CACHE_NAME);
 
-            // Create query which joins on 2 types to select people for a specific organization.
-            GridCacheQuery<Map.Entry<PersonKey, Person>> qry =
-                cache.queries().createSqlQuery(Person.class,
-                    "from \"partitioned\".Person, \"replicated\".Organization " +
-                        "where Person.orgId = Organization.id " +
-                        "and lower(Organization.name) = lower(?)").enableDedup(true);
+            personCacheCfg.setCacheMode(CacheMode.PARTITIONED);
+            personCacheCfg.setIndexedTypes(PersonKey.class, Person.class);
 
-            System.out.println();
-            System.out.println("Initial salaries:");
+            try (
+                IgniteCache<Long, Organization> orgCache = ignite.createCache(orgCacheCfg);
+                IgniteCache<PersonKey, Person> personCache = ignite.createCache(personCacheCfg)
+            ) {
+                // Populate cache with data.
+                initialize();
 
-            // Execute query for find employees for organization.
-            for (Entry<PersonKey, Person> p : qry.execute(orgName).get())
-                System.out.println("Person: " + p.getValue());
+                // Organization name to query.
+                final String orgName = "GridGain";
 
-            // Increase salary for a company employees by 10%.
-            // 1. Execute query to get the list of Employee IDs.
-            // Create query to get IDs of all employees.
-            GridCacheQuery<List<?>> qry1 = cache.queries().createSqlFieldsQuery(
-                "select Person.id, Organization.id from \"partitioned\".Person, " +
-                    "\"replicated\".Organization where Person.orgId = Organization.id " +
-                    "and lower(Organization.name) = lower(?)").enableDedup(true);
+                // Create query which joins on 2 types to select people for a specific organization.
+                SqlQuery<PersonKey, Person> qry = new SqlQuery<>(Person.class,
+                    "from Person, \"" + ORG_CACHE_NAME + "\".Organization " +
+                    "where Person.orgId = Organization.id " +
+                    "and lower(Organization.name) = lower(?)"
+                );
 
-            // Execute query to get collection of rows. In this particular
-            // case each row will have one element with full name of an employees.
-            Collection<List<?>> res = qry1.execute(orgName).get();
+                System.out.println();
+                System.out.println("Initial salaries:");
 
-            Set<PersonKey> ids = new HashSet<>(res.size(), 1.0f);
+                // Execute query for find employees for organization.
+                for (Cache.Entry<PersonKey, Person> p : personCache.query(qry.setArgs(orgName)))
+                    System.out.println("Person: " + p.getValue());
 
-            for (List<?> l : res)
-                ids.add(new PersonKey((Long)l.get(0), (Long)l.get(1)));
+                // Increase salary for a company employees by 10%.
+                // 1. Execute query to get the list of Employee IDs.
+                // Create query to get IDs of all employees.
+                SqlFieldsQuery qry1 = new SqlFieldsQuery(
+                    "select p.id, o.id from Person p, \"" + ORG_CACHE_NAME + "\".Organization o " +
+                    "where p.orgId = o.id " +
+                    "and lower(o.name) = lower(?)"
+                );
 
-            System.out.println();
-            System.out.println("Will update salaries for a given organization by 10%.");
+                // Execute query to get collection of rows. In this particular
+                // case each row will have one element with full name of an employees.
+                Collection<List<?>> res = personCache.query(qry1.setArgs(orgName)).getAll();
 
-            g.<PersonKey, Person>cache(PARTITIONED_CACHE_NAME).transformAll(ids, new GridClosure<Person, Person>() {
-                @Override public Person apply(Person person) {
-                    if (person == null)
+                Set<PersonKey> ids = new HashSet<>(res.size(), 1.0f);
+
+                for (List<?> l : res)
+                    ids.add(new PersonKey((Long)l.get(0), (Long)l.get(1)));
+
+                System.out.println();
+                System.out.println("Will update salaries for a given organization by 10%.");
+
+                personCache.invokeAll(ids, new EntryProcessor<PersonKey, Person, Object>() {
+                    @Override public Object process(MutableEntry<PersonKey, Person> entry, Object... args) {
+                        Person person = entry.getValue();
+
+                        if (person == null)
+                            return null;
+
+                        System.out.println("Transform closure has been called for person: " + person.getFirstName());
+
+                        // Need to return new instance.
+                        Person res = new Person(person);
+
+                        // Do not use * 1.1 to prevent rounding errors.
+                        res.setSalary(res.getSalary() + res.getSalary() / 10);
+
+                        entry.setValue(res);
+
                         return null;
+                    }
+                });
 
-                    System.out.println("Transform closure has been called for person: " + person.getFirstName());
+                System.out.println();
+                System.out.println("Salaries after update:");
 
-                    // Need to return new instance.
-                    Person res = new Person(person);
-
-                    // Do not use * 1.1 to prevent rounding errors.
-                    res.setSalary(res.getSalary() + res.getSalary() / 10);
-
-                    return res;
-                }
-            });
-
-            System.out.println();
-            System.out.println("Salaries after update:");
-
-            // Execute query one more time to print salaries after update.
-            for (Entry<PersonKey, Person> p : qry.execute(orgName).get())
-                System.out.println("Person: " + p);
+                // Execute query one more time to print salaries after update.
+                for (Cache.Entry<PersonKey, Person> p : personCache.query(qry.setArgs(orgName)))
+                    System.out.println("Person: " + p);
+            }
         }
     }
 
     /**
      * Populate cache with test data.
      *
-     * @throws GridException In case of error.
      * @throws InterruptedException In case of error.
      */
-    private static void initialize() throws GridException, InterruptedException {
-        // Organization projection.
-        GridCacheProjection<Long, Organization> orgCache = GridGain.grid().cache(REPLICATED_CACHE_NAME);
-
-        // Person projection.
-        GridCacheProjection<PersonKey, Person> personCache = GridGain.grid().cache(PARTITIONED_CACHE_NAME);
-
-        // Clear caches before start.
-        personCache.globalClearAll();
-        orgCache.globalClearAll();
+    private static void initialize() throws InterruptedException {
+        IgniteCache<Long, Organization> orgCache = Ignition.ignite().cache(ORG_CACHE_NAME);
+        IgniteCache<PersonKey, Person> personCache = Ignition.ignite().cache(PERSON_CACHE_NAME);
 
         // Organizations.
         Organization org1 = new Organization("GridGain");

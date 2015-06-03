@@ -9,7 +9,7 @@
 
 package org.gridgain.examples.datagrid.model;
 
-import org.gridgain.grid.cache.affinity.*;
+import org.apache.ignite.cache.affinity.*;
 
 import java.io.*;
 
@@ -24,7 +24,7 @@ public class PersonKey implements Serializable {
     private final long id;
 
     /** Organization ID. */
-    @GridCacheAffinityKeyMapped
+    @AffinityKeyMapped
     private final long orgId;
 
     /**

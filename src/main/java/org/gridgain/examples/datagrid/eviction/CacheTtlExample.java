@@ -21,20 +21,22 @@
 
 package org.gridgain.examples.datagrid.eviction;
 
-import org.gridgain.examples.datagrid.*;
-import org.gridgain.grid.*;
-import org.gridgain.grid.cache.*;
+import org.apache.ignite.*;
+import org.gridgain.examples.*;
+
+import javax.cache.expiry.*;
+import java.util.concurrent.*;
 
 /**
  * Demonstrates how to use cache TTL.
  * <p>
  * Remote nodes should always be started with special configuration file:
- * {@code 'ggstart.{sh|bat} ADVANCED-EXAMPLES-DIR/config/example-cache.xml'}
- * or {@link CacheExampleNodeStartup} can be used.
+ * {@code 'ggstart.{sh|bat} ADVANCED-EXAMPLES-DIR/config/example-ignite.xml'}
+ * or {@link ExampleNodeStartup} can be used.
  */
 public class CacheTtlExample {
     /** Cache name. */
-    private static final String CACHE_NAME = "partitioned";
+    private static final String CACHE_NAME = CacheTtlExample.class.getSimpleName();
 
     /**
      * Executes example.
@@ -43,46 +45,33 @@ public class CacheTtlExample {
      * @throws Exception If example execution failed.
      */
     public static void main(String[] args) throws Exception {
-        try (Grid g = GridGain.start("config/example-cache.xml")) {
+        try (Ignite ignite = Ignition.start("config/example-ignite.xml")) {
             System.out.println();
             System.out.println(">>> Cache TTL example started.");
 
-            final GridCache<Long, Long> cache = g.cache(CACHE_NAME);
+            try (IgniteCache<Long, Long> cache = ignite.createCache(CACHE_NAME)) {
+                // Expiry policy.
+                ExpiryPolicy plc = new CreatedExpiryPolicy(new Duration(TimeUnit.SECONDS, 1));
 
-            // Get empty cache entry.
-            GridCacheEntry<Long, Long> e = cache.entry(0L);
+                // Put value with expiration.
+                cache.withExpiryPolicy(plc).put(0L, 0L);
 
-            assert e != null;
+                Long val = cache.get(0L);
 
-            // Set time to live first.
-            e.timeToLive(1000);
+                if (val == null || val != 0L) throw new Exception("Failed to get proper value from cache: " + val);
 
-            // Put value to cache.
-            e.set(0L);
+                System.out.println("Waiting for entry to expire...");
 
-            Long val = cache.get(0L);
+                // Let entry expire.
+                Thread.sleep(2000);
 
-            if (val == null || val != 0L)
-                throw new Exception("Failed to get proper value from cache: " + val);
+                // Get value from cache.
+                val = cache.get(0L);
 
-            System.out.println("Waiting for entry to expire...");
+                if (val != null) throw new Exception("Entry should have been evicted due to eager TTL eviction: " + val);
 
-            // Let entry expire.
-            Thread.sleep(2000);
-
-            // Get value via GridCacheEntry.
-            val = e.get();
-
-            if (val != null)
-                throw new Exception("Entry should have been evicted due to eager TTL eviction: " + val);
-
-            // Get value from cache.
-            val = cache.get(0L);
-
-            if (val != null)
-                throw new Exception("Entry should have been evicted due to eager TTL eviction: " + val);
-
-            System.out.println(">>> Cache TTL example finished.");
+                System.out.println(">>> Cache TTL example finished.");
+            }
         }
     }
 }
