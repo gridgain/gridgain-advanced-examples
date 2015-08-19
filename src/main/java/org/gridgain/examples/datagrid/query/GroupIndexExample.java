@@ -67,7 +67,7 @@ public class GroupIndexExample {
                 SqlFieldsQuery q = new SqlFieldsQuery(
                     "select e.firstName, e.lastName, e.salary, o.name " +
                     "from Employee e, \"" + ORG_CACHE_NAME + "\".Organization o " +
-                    "where e.orgId = o.id and e.salary > 1000");
+                    "where e.orgId = o.id and e.salary = 1000 and o.name = 'Other'");
 
                 System.out.println("Query results: ");
                 System.out.println(empCache.query(q).getAll());
@@ -114,9 +114,6 @@ public class GroupIndexExample {
     /**
      * Employee.
      */
-    @QueryGroupIndex.List(
-        @QueryGroupIndex(name = "idx1") // Find employee of organization with passed salary.
-    )
     private static class Employee implements Serializable {
         /** Last name. */
         @QuerySqlField(index = true)
@@ -126,15 +123,14 @@ public class GroupIndexExample {
         @QuerySqlField(index = true)
         private String lastName;
 
-        /** Organization ID (indexed). */
-        @QuerySqlField(index = true)
-        @QuerySqlField.Group(name = "idx1", order = 0)
+        /** Organization ID (group indexed). */
+        @QuerySqlField(orderedGroups = {@QuerySqlField.Group(name = "idx1", order = 0)})
         private UUID orgId;
 
-        /** Salary (indexed). */
-        @QuerySqlField(index = true)
-        @QuerySqlField.Group(name = "idx1", order = 1)
-        private double salary;
+        /** Salary (indexed and group indexed). */
+        @QuerySqlField(index = true,
+            orderedGroups = {@QuerySqlField.Group(name = "idx1", order = 1)})
+        private int salary;
 
         /**
          * @param firstName First name.
@@ -142,7 +138,7 @@ public class GroupIndexExample {
          * @param orgId Organization ID.
          * @param salary Salary.
          */
-        private Employee(String firstName, String lastName, UUID orgId, double salary) {
+        private Employee(String firstName, String lastName, UUID orgId, int salary) {
             this.firstName = firstName;
             this.lastName = lastName;
             this.orgId = orgId;
