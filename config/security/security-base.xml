@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+    Copyright (C) GridGain Systems. All Rights Reserved.
+    _________        _____ __________________        _____
+    __  ____/___________(_)______  /__  ____/______ ____(_)_______
+    _  / __  __  ___/__  / _  __  / _  / __  _  __ `/__  / __  __ \
+    / /_/ /  _  /    _  /  / /_/ /  / /_/ /  / /_/ / _  /  _  / / /
+    \____/   /_/     /_/   \_,__/   \____/   \__,_/  /_/   /_/ /_/
+-->
+
+<!--
+    GridGain Spring base configuration file to startup grid security example.
+-->
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+                           http://www.springframework.org/schema/beans/spring-beans-2.5.xsd">
+
+    <!-- Default allow all -->
+    <bean id="defaultAllow.cred" class="org.apache.ignite.plugin.security.SecurityCredentials">
+        <constructor-arg value="node"/>
+        <constructor-arg value="password"/>
+    </bean>
+
+    <!-- Cache  operations -->
+    <bean id="cache.readonly.cred" class="org.apache.ignite.plugin.security.SecurityCredentials">
+        <constructor-arg value="readonly"/>
+        <constructor-arg value="password"/>
+    </bean>
+
+    <!-- Cache  operations -->
+    <bean id="cache.readwrite.cred" class="org.apache.ignite.plugin.security.SecurityCredentials">
+        <constructor-arg value="readwrite"/>
+        <constructor-arg value="password"/>
+    </bean>
+
+    <bean id="authenticator.cfg.base" abstract="true" class="org.gridgain.grid.security.passcode.PasscodeAuthenticator">
+        <property name="aclProvider">
+            <bean class="org.gridgain.grid.security.passcode.AuthenticationAclBasicProvider">
+                <constructor-arg>
+                    <map>
+                        <entry key-ref="defaultAllow.cred" value="{defaultAllow:true}"/>
+
+                        <entry key-ref="cache.readonly.cred"
+                               value="{
+                                          defaultAllow:false,
+                                          {
+                                              cache:partitioned,
+                                              permissions:[CACHE_READ]
+                                          }
+                                      }"/>
+
+                        <entry key-ref="cache.readwrite.cred"
+                               value="{
+                                          defaultAllow:false,
+                                          {
+                                              cache:'*',
+                                              permissions:[CACHE_PUT, CACHE_READ, CACHE_REMOVE]
+                                          }
+                                      }"/>
+                    </map>
+                </constructor-arg>
+            </bean>
+        </property>
+    </bean>
+
+    <bean id="grid.cfg.base" abstract="true" class="org.apache.ignite.configuration.IgniteConfiguration">
+        <property name="localHost" value="127.0.0.1"/>
+    </bean>
+</beans>

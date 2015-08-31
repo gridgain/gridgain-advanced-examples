@@ -26,7 +26,7 @@ import org.apache.ignite.cache.*;
 import org.apache.ignite.cache.query.*;
 import org.apache.ignite.configuration.*;
 import org.gridgain.examples.*;
-import org.gridgain.examples.datagrid.model.*;
+import org.gridgain.examples.model.*;
 
 import javax.cache.*;
 import javax.cache.processor.*;
@@ -71,7 +71,6 @@ public class EntryProcessorExample {
                 initialize();
 
                 // Organization name to query.
-                final String orgName = "GridGain";
 
                 // Create query which joins on 2 types to select people for a specific organization.
                 SqlQuery<PersonKey, Person> qry = new SqlQuery<>(Person.class,
@@ -84,6 +83,8 @@ public class EntryProcessorExample {
                 System.out.println("Initial salaries:");
 
                 // Execute query for find employees for organization.
+                final String orgName = "GridGain";
+
                 for (Cache.Entry<PersonKey, Person> p : personCache.query(qry.setArgs(orgName)))
                     System.out.println("Person: " + p.getValue());
 

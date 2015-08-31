@@ -7,7 +7,7 @@
  *  \____/   /_/     /_/   \_,__/   \____/   \__,_/  /_/   /_/ /_/
  */
 
-package org.gridgain.examples.datagrid.model;
+package org.gridgain.examples.model;
 
 import org.apache.ignite.cache.affinity.*;
 

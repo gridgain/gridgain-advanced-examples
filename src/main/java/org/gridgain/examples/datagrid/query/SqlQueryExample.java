@@ -26,7 +26,7 @@ import org.apache.ignite.cache.*;
 import org.apache.ignite.cache.query.*;
 import org.apache.ignite.configuration.*;
 import org.gridgain.examples.*;
-import org.gridgain.examples.datagrid.model.*;
+import org.gridgain.examples.model.*;
 
 import java.util.*;
 
