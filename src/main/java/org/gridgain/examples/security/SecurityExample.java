@@ -47,7 +47,7 @@ public class SecurityExample {
      */
     private static void startBadNode() {
         try {
-            Ignition.start("examples/config/security/security-client-node-bad.xml");
+            Ignition.start("config/security/security-client-node-bad.xml");
 
             throw new Error(); // Should never happen.
         }
@@ -62,7 +62,7 @@ public class SecurityExample {
      *
      */
     private static void startReadOnlyNode() {
-        try (Ignite ignite = Ignition.start("examples/config/security/security-client-node-readonly.xml")) {
+        try (Ignite ignite = Ignition.start("config/security/security-client-node-readonly.xml")) {
             IgniteCache<Integer, Integer> cache = ignite.getOrCreateCache("partitioned");
 
             System.out.println("Read from cache: " + cache.get(1));
@@ -84,7 +84,7 @@ public class SecurityExample {
      *
      */
     private static void startReadWriteNode() {
-        try (Ignite ignite = Ignition.start("examples/config/security/security-client-node-readwrite.xml")) {
+        try (Ignite ignite = Ignition.start("config/security/security-client-node-readwrite.xml")) {
             IgniteCache<Integer, Integer> cache = ignite.getOrCreateCache("partitioned");
 
             cache.put(1, 1);
