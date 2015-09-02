@@ -31,6 +31,6 @@ public class ExampleNodeStartup {
      * @param args Command line arguments, none required.
      */
     public static void main(String[] args) throws Exception {
-        Ignition.start("config/security/security-data-node.xml");
+        Ignition.start("config/example-ignite.xml");
     }
 }

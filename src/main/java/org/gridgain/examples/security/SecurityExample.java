@@ -25,7 +25,20 @@ import org.apache.ignite.*;
 import org.gridgain.examples.*;
 
 /**
- * Start {@link ExampleNodeStartup} with config/security/security-data-node.xml.
+ * This example demonstrates authentication and authorization support in GridGain.
+ * Start {@link ExampleNodeStartup} with config/security/security-data-node.xml or
+ * {@code 'ggstart.[sh|bat] ADVANCED-EXAMPLES-DIR/config/example-ignite.xml'}.
+ * Then start the example. It will start 3 nodes sequentially:
+ * <ol>
+ *     <li>The first one started in {@link #startBadNode()} will not get into topology and start
+ *     will fail with exception.</li>
+ *     <li>The second one started in {@link #startReadWriteNode()} will successfully start and
+ *     execute cache read and write operations which are permitted
+ *     because of the credentials it is configured with.</li>
+ *     <li>The third one started in {@link #startReadOnlyNode()} will successfully start and
+ *     execute cache read but will fail on cache write operation which is fine
+ *     because of the credentials it is configured with.</li>
+ * </ol>
  */
 public class SecurityExample {
     /**
@@ -33,7 +46,7 @@ public class SecurityExample {
      */
     public static void main(String[] args) {
         System.out.println();
-        System.out.println(">>> Events API example started.");
+        System.out.println(">>> Security example started.");
 
         startBadNode();
 

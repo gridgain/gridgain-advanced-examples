@@ -26,6 +26,7 @@ import org.apache.ignite.cache.*;
 import org.apache.ignite.configuration.*;
 import org.apache.ignite.lang.*;
 import org.apache.ignite.transactions.*;
+import org.gridgain.examples.*;
 import org.gridgain.examples.model.*;
 
 import java.util.concurrent.*;
@@ -33,6 +34,14 @@ import java.util.concurrent.*;
 /**
  * This sample application can be used to produce sample load for
  * Visor GUI demonstration and testing purposes.
+ * <p>
+ * Start 1 or more remote nodes with {@link ExampleNodeStartup} or
+ * {@code 'ggstart.[sh|bat] ADVANCED-EXAMPLES-DIR/config/example-ignite.xml'}.
+ * Then start Visor GUI with GRIDGAIN_HOME/bin/ggvisorui.{sh | bat} and
+ * connect to the started topology using external connect (with default settings)
+ * or external connect (with 'ADVANCED-EXAMPLES-DIR/config/example-ignite.xml' config).
+ * Then start the example. Visor GUI will show various activities happening in the topology and
+ * will allow to run SQL queries with corresponding tab.
  */
 @SuppressWarnings("InfiniteLoopStatement")
 public class VisorDemoLoadProducer {

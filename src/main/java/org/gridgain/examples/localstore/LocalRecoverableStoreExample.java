@@ -26,12 +26,28 @@ import org.apache.ignite.cache.store.*;
 import org.apache.ignite.configuration.*;
 import org.apache.ignite.lang.*;
 import org.apache.ignite.resources.*;
+import org.gridgain.examples.*;
 import org.gridgain.grid.cache.store.local.*;
 
 import javax.cache.configuration.*;
 
 /**
- *
+ * This example demonstrates a simple use case for Local Recoverable Store.
+ * <p>
+ * Follow the plan:
+ * <ol>
+ * <li>
+ *     Start 1 or more remote nodes with {@link ExampleNodeStartup} or
+ *          {@code 'ggstart.{sh|bat} ADVANCED-EXAMPLES-DIR/config/example-ignite.xml'}.</li>
+ * <li>Run example - data will be stored to server nodes and persisted to local stores on them.</li>
+ * <li>Stop all servers and then restart them.</li>
+ * <li>Comment put section [1] and uncomment section [2]. Run example.
+ *      Make sure that {@code cache.get()} calls return correct values.</li>
+ * <li>Stop all servers and then restart them.</li>
+ * <li>Comment section [2] and uncomment section [3]. Run example.
+ *      Before loading cache {@code cache.peek()} should return {@code null}.
+ *      After loading cache{@code cache.peek()} should return correct values.</li>
+ * </ol>
  */
 public class LocalRecoverableStoreExample {
     /**
@@ -60,15 +76,20 @@ public class LocalRecoverableStoreExample {
 
             System.out.println("Putting values to cache...");
 
-            // Put section.
+            // Put section [1]. Comment this after 1st run to test persistence.
             for (int i = 0; i < 20; i++)
                 cache.put(i, i);
+            // Put section end [1].
 
-//            cacheGet(cache);
+            // Section [2]. Uncomment it on appropriate step and comment then.
+            // cacheGet(cache);
+            // Section end [2].
 
-//            cachePeek(
-//                ignite,
-//                cache);
+            // Section [3].
+            // cachePeek(
+            //    ignite,
+            //    cache);
+            // Section end [3].
         }
     }
 
@@ -103,6 +124,10 @@ public class LocalRecoverableStoreExample {
             }
         );
 
+        System.out.println();
+        System.out.println(">>> Check server nodes output.");
+        System.out.println(">>> Peek operation should return null while cache is not loaded.");
+
         cache.loadCache(
             new IgniteBiPredicate<Integer, Integer>() {
                 @Override public boolean apply(
@@ -133,5 +158,6 @@ public class LocalRecoverableStoreExample {
 
         System.out.println();
         System.out.println(">>> Check server nodes output.");
+        System.out.println(">>> Peek operation should return correct values after cache is loaded.");
     }
 }
