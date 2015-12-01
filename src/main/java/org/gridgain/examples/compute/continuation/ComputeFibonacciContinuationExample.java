@@ -19,7 +19,7 @@
  *  \____/   /_/     /_/   \_,__/   \____/   \__,_/  /_/   /_/ /_/
  */
 
-package org.gridgain.examples.continuation;
+package org.gridgain.examples.compute.continuation;
 
 import org.apache.ignite.*;
 import org.apache.ignite.compute.*;
