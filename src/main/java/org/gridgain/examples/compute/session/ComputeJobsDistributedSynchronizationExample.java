@@ -19,7 +19,7 @@
  *  \____/   /_/     /_/   \_,__/   \____/   \__,_/  /_/   /_/ /_/
  */
 
-package org.gridgain.examples.compute.state;
+package org.gridgain.examples.compute.session;
 
 import java.util.HashMap;
 import java.util.List;
