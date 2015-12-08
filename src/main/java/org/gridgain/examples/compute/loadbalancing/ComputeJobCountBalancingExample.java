@@ -76,7 +76,7 @@ public class ComputeJobCountBalancingExample {
         AdaptiveLoadBalancingSpi loadSpi = new AdaptiveLoadBalancingSpi();
         AdaptiveJobCountLoadProbe probe = new AdaptiveJobCountLoadProbe();
 
-        // Use current job count load value.
+//         Use current job count load value.
         probe.setUseAverage(false);
 
         loadSpi.setLoadProbe(probe);
@@ -93,7 +93,7 @@ public class ComputeJobCountBalancingExample {
                 compute.execute(new BalancingTask(), ignite.cluster().localNode().id());
 
                 try {
-                    Thread.sleep(3000);
+                    Thread.sleep(1000);
                 }
                 catch (InterruptedException e) {
                     e.printStackTrace();
@@ -110,16 +110,13 @@ public class ComputeJobCountBalancingExample {
      * slow down jobs execution on the node that started this example.
      */
     private static class BalancingTask extends ComputeTaskSplitAdapter <UUID, Object> {
-        @LoadBalancerResource
-        private ComputeLoadBalancer balancer;
-
         /** {@inheritDoc} */
         @Override protected Collection<? extends ComputeJob> split(int nodesCnt,
             UUID slowNodeId) throws IgniteException {
 
             ArrayList<BalancingJob> list = new ArrayList<>();
 
-            for (int i = 0; i < 10; i++)
+            for (int i = 0; i < nodesCnt; i++)
                 list.add(new BalancingJob(slowNodeId));
 
             return list;
@@ -165,14 +162,16 @@ public class ComputeJobCountBalancingExample {
 
             AtomicInteger pending = localMap.get("pending");
 
-            if (pending == null)
-                pending = localMap.putIfAbsent("pending", new AtomicInteger());
+            if (pending == null) {
+                AtomicInteger old = localMap.putIfAbsent("pending", new AtomicInteger());
+
+                if (old != null)
+                    pending = old;
+            }
 
             pending.incrementAndGet();
 
             if (ignite.cluster().localNode().id().equals(slowNodeId)) {
-                System.out.println("Holding job execution [id=" + slowNodeId + ']');
-
                 // Holding job execution for 15 seconds. AdaptiveLoadBalancing should delegate more jobs to the other
                 // node for execution.
                 try {
@@ -185,8 +184,12 @@ public class ComputeJobCountBalancingExample {
 
             AtomicInteger finished = localMap.get("finished");
 
-            if (finished == null)
-                finished = localMap.putIfAbsent("finished", new AtomicInteger());
+            if (finished == null) {
+                AtomicInteger old = localMap.putIfAbsent("finished", new AtomicInteger());
+
+                if (old != null)
+                    finished = old;
+            }
 
             System.out.println("Jobs stat [executed = " + finished.incrementAndGet() + ", pending = "
                 + pending.decrementAndGet() + ']');
