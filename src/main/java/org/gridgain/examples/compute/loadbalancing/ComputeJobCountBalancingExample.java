@@ -31,6 +31,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteCompute;
 import org.apache.ignite.IgniteException;
+import org.apache.ignite.IgniteState;
 import org.apache.ignite.Ignition;
 import org.apache.ignite.compute.ComputeJob;
 import org.apache.ignite.compute.ComputeJobResult;
@@ -86,13 +87,19 @@ public class ComputeJobCountBalancingExample {
             IgniteCompute compute = ignite.compute().withAsync();
 
             for (;;) {
-                compute.execute(new BalancingTask(), ignite.cluster().localNode().id());
-
                 try {
+                    compute.execute(new BalancingTask(), ignite.cluster().localNode().id());
+
                     Thread.sleep(1000);
                 }
                 catch (InterruptedException e) {
                     e.printStackTrace();
+                }
+                catch (Exception e) {
+                    if (Ignition.state(ignite.name()) != IgniteState.STOPPED)
+                        e.printStackTrace();
+
+                    break;
                 }
             }
         }
