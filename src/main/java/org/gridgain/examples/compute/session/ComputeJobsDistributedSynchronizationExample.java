@@ -80,7 +80,7 @@ public class ComputeJobsDistributedSynchronizationExample {
      * All the nodes will be waiting while the leader starts executing its job.
      */
     @ComputeTaskSessionFullSupport
-    private static class SimpleTask extends ComputeTaskAdapter <SimpleJob, String> {
+    private static class SimpleTask extends ComputeTaskAdapter<SimpleJob, String> {
         /** */
         @TaskSessionResource
         private ComputeTaskSession session;
@@ -107,7 +107,7 @@ public class ComputeJobsDistributedSynchronizationExample {
             StringBuilder builder = new StringBuilder("Result: ");
 
             for (ComputeJobResult res : list)
-                builder.append(res.getData()).append(" ");
+                builder.append(res.<String>getData()).append(" ");
 
             return builder.toString();
         }
@@ -130,13 +130,12 @@ public class ComputeJobsDistributedSynchronizationExample {
 
         /** {@inheritDoc} */
         @Override public void cancel() {
-
+            // No-op.
         }
 
         /** {@inheritDoc} */
         @Override public Object execute() throws IgniteException {
             UUID leaderId = session.getAttribute(LEADER_ID_ATTR);
-
 
             if (leaderId.equals(ignite.cluster().localNode().id())) {
                 System.out.println("Leader processed the job, unblocking waiting node ...");
