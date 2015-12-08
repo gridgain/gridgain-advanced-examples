@@ -24,6 +24,7 @@ package org.gridgain.examples.compute.masterleave;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteCompute;
@@ -62,6 +63,9 @@ import org.jetbrains.annotations.Nullable;
  * using checkpoints.
  */
 public class ComputeMasterLeaveAwareExample {
+    /** */
+    private final static String CHECKPOINT_KEY = "checkpoint_key";
+
     /**
      * Executes example.
      *
@@ -74,9 +78,6 @@ public class ComputeMasterLeaveAwareExample {
         ipFinder.setAddresses(Arrays.asList("127.0.0.1:47500..47509"));
 
         cfg.setDiscoverySpi(new TcpDiscoverySpi().setIpFinder(ipFinder));
-
-        // Explicitly set the name of the node in order to distinguish nodes in the compute job below.
-        cfg.setGridName("master");
 
         // Configuring cache to use for checkpoints.
         CacheConfiguration cacheCfg = new CacheConfiguration();
@@ -93,6 +94,11 @@ public class ComputeMasterLeaveAwareExample {
 
         // Overriding default checkpoints SPI
         cfg.setCheckpointSpi(checkpointSpi);
+
+        HashMap<String, Object> attrs = new HashMap<>();
+        attrs.put(CHECKPOINT_KEY, "master_node");
+
+        cfg.setUserAttributes(attrs);
 
         try (Ignite ignite = Ignition.start(cfg)) {
             if (ignite.cluster().nodes().size() < 2)
@@ -212,12 +218,12 @@ public class ComputeMasterLeaveAwareExample {
         }
 
         /**
-         * Gets checkpoint key to use for this node.
+         * Returns checkpoint key.
          *
-         * @return Checkpoint key.
+         * @return Checkpoint key to use.
          */
         private String checkpointKey() {
-            return ignite.name() + "_key";
+            return (String)ignite.configuration().getUserAttributes().get(CHECKPOINT_KEY);
         }
     }
 }

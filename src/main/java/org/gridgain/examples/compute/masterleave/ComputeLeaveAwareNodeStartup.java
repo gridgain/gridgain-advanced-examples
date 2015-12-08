@@ -1,6 +1,7 @@
 package org.gridgain.examples.compute.masterleave;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import org.apache.ignite.Ignition;
 import org.apache.ignite.configuration.IgniteConfiguration;
 import org.apache.ignite.spi.checkpoint.cache.CacheCheckpointSpi;
@@ -21,13 +22,15 @@ public class ComputeLeaveAwareNodeStartup {
     public static void main(String[] args) {
         IgniteConfiguration cfg = new IgniteConfiguration();
 
+        HashMap<String, Object> attrs = new HashMap<>();
+        attrs.put("checkpoint_key", "slave_node");
+
+        cfg.setUserAttributes(attrs);
+
         TcpDiscoveryVmIpFinder ipFinder = new TcpDiscoveryVmIpFinder();
         ipFinder.setAddresses(Arrays.asList("127.0.0.1:47500..47509"));
 
         cfg.setDiscoverySpi(new TcpDiscoverySpi().setIpFinder(ipFinder));
-
-        // Explicitly set the name of the node in order to distinguish nodes in the compute job below.
-        cfg.setGridName("slave");
 
         // Configuring checkpoints spi.
         CacheCheckpointSpi checkpointSpi = new CacheCheckpointSpi();
