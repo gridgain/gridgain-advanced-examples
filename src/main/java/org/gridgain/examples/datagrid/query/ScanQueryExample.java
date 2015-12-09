@@ -31,7 +31,8 @@ import org.gridgain.examples.model.Person;
 import org.gridgain.examples.model.PersonKey;
 
 /**
- * This example shows how to send entry manipulation logic to the remote nodes (TODO) <p> Remote nodes should always be
+ * This example shows how to execute a scan query on a node that owns a particular partition.
+ *
  * started with special configuration file which enables P2P class loading: {@code 'ignite.{sh|bat}
  * ADVANCED-EXAMPLES-DIR/config/example-ignite.xml'} or {@link ExampleNodeStartup} can be used.
  */
