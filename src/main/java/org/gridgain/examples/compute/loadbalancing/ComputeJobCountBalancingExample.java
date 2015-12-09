@@ -31,16 +31,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteCompute;
 import org.apache.ignite.IgniteException;
+import org.apache.ignite.IgniteState;
 import org.apache.ignite.Ignition;
 import org.apache.ignite.compute.ComputeJob;
-import org.apache.ignite.compute.ComputeJobContext;
 import org.apache.ignite.compute.ComputeJobResult;
-import org.apache.ignite.compute.ComputeLoadBalancer;
 import org.apache.ignite.compute.ComputeTaskSplitAdapter;
 import org.apache.ignite.configuration.IgniteConfiguration;
 import org.apache.ignite.resources.IgniteInstanceResource;
-import org.apache.ignite.resources.JobContextResource;
-import org.apache.ignite.resources.LoadBalancerResource;
 import org.apache.ignite.spi.loadbalancing.adaptive.AdaptiveJobCountLoadProbe;
 import org.apache.ignite.spi.loadbalancing.adaptive.AdaptiveLoadBalancingSpi;
 import org.gridgain.examples.ExampleNodeStartup;
@@ -76,7 +73,7 @@ public class ComputeJobCountBalancingExample {
         AdaptiveLoadBalancingSpi loadSpi = new AdaptiveLoadBalancingSpi();
         AdaptiveJobCountLoadProbe probe = new AdaptiveJobCountLoadProbe();
 
-//         Use current job count load value.
+        // Use current job count load value.
         probe.setUseAverage(false);
 
         loadSpi.setLoadProbe(probe);
@@ -89,14 +86,20 @@ public class ComputeJobCountBalancingExample {
 
             IgniteCompute compute = ignite.compute().withAsync();
 
-            while (true) {
-                compute.execute(new BalancingTask(), ignite.cluster().localNode().id());
-
+            for (;;) {
                 try {
+                    compute.execute(new BalancingTask(), ignite.cluster().localNode().id());
+
                     Thread.sleep(1000);
                 }
                 catch (InterruptedException e) {
                     e.printStackTrace();
+                }
+                catch (Exception e) {
+                    if (Ignition.state(ignite.name()) != IgniteState.STOPPED)
+                        e.printStackTrace();
+
+                    break;
                 }
             }
         }
@@ -139,9 +142,6 @@ public class ComputeJobCountBalancingExample {
         @IgniteInstanceResource
         private Ignite ignite;
 
-        @JobContextResource
-        private ComputeJobContext context;
-
         /**
          * Constructor.
          *
@@ -163,7 +163,7 @@ public class ComputeJobCountBalancingExample {
             AtomicInteger pending = localMap.get("pending");
 
             if (pending == null) {
-                AtomicInteger old = localMap.putIfAbsent("pending", new AtomicInteger());
+                AtomicInteger old = localMap.putIfAbsent("pending", pending = new AtomicInteger());
 
                 if (old != null)
                     pending = old;
@@ -185,7 +185,7 @@ public class ComputeJobCountBalancingExample {
             AtomicInteger finished = localMap.get("finished");
 
             if (finished == null) {
-                AtomicInteger old = localMap.putIfAbsent("finished", new AtomicInteger());
+                AtomicInteger old = localMap.putIfAbsent("finished", finished = new AtomicInteger());
 
                 if (old != null)
                     finished = old;
