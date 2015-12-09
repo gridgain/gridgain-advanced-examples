@@ -107,7 +107,7 @@ public class ComputeJobsDistributedSynchronizationExample {
             StringBuilder builder = new StringBuilder("Result: ");
 
             for (ComputeJobResult res : list)
-                builder.append(res.<String>getData()).append(" ");
+                builder.append(res.getData()).append(" ");
 
             return builder.toString();
         }
