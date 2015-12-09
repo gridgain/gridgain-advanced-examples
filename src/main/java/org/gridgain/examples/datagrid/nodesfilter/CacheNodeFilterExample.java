@@ -25,6 +25,7 @@ import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.ignite.Ignite;
+import org.apache.ignite.IgniteCache;
 import org.apache.ignite.IgniteCompute;
 import org.apache.ignite.Ignition;
 import org.apache.ignite.configuration.CacheConfiguration;
@@ -81,7 +82,10 @@ public class CacheNodeFilterExample {
         redCacheCfg.setName(RED_ONLY_CACHE);
         redCacheCfg.setNodeFilter(new CacheNodeFilter());
 
-        ignite.getOrCreateCache(redCacheCfg);
+        IgniteCache<Integer, Integer> cache = ignite.getOrCreateCache(redCacheCfg);
+
+        for (int i = 0; i < 10; i++)
+            cache.put(i, i);
 
         // Sending broadcast message to the nodes that have red cache deployed.
         IgniteCompute compute = ignite.compute(ignite.cluster().forCacheNodes(RED_ONLY_CACHE));
@@ -92,6 +96,19 @@ public class CacheNodeFilterExample {
 
             @Override public void run() {
                 System.out.println("I have the red cache deployed [nodeId=" + ignite.cluster().localNode().id() + ']');
+            }
+        });
+
+        // Checking that the cache is still accessible from all the nodes.
+        ignite.compute().broadcast(new IgniteRunnable() {
+            @IgniteInstanceResource
+            Ignite ignite;
+
+            @Override public void run() {
+                IgniteCache<Integer, Integer> cache = ignite.cache(RED_ONLY_CACHE);
+
+                // Size must be 0 on the nodes where the cache is not deployed.
+                System.out.println("Red cache local size: " + cache.localSize());
             }
         });
     }
