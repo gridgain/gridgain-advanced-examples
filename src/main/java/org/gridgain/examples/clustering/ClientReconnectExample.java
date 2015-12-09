@@ -68,6 +68,7 @@ public class ClientReconnectExample {
                         }
                         catch (InterruptedException e) {
                             e.printStackTrace();
+                            return;
                         }
                     }
                     catch (CacheException e) {
@@ -88,6 +89,10 @@ public class ClientReconnectExample {
                             catch (IllegalStateException e2) {
                                 cache = ignite.getOrCreateCache("test_cache");
                             }
+                        }
+                        else {
+                            e.printStackTrace();
+                            return;
                         }
                     }
                 }
