@@ -3,9 +3,11 @@ package org.gridgain.examples.datagrid.query;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import javax.cache.Cache;
 import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteCache;
 import org.apache.ignite.IgniteCompute;
@@ -209,33 +211,33 @@ public class ScanQueryExample {
 
                 scanQuery.setPartition(part);
 
-                scanQuery.setFilter(new IgniteBiPredicate<PersonKey, Person>() {
-                    @Override public boolean apply(PersonKey key, Person value) {
-                        // Performing update in a transaction.
-                        try (Transaction tr = node.transactions().txStart(
-                            TransactionConcurrency.PESSIMISTIC, TransactionIsolation.REPEATABLE_READ)) {
-
-                            // Locking the entry.
-                            Person person = cache.get(key);
-
-                            person.setSalary(person.getSalary() + person.getSalary() / 10);
-
-                            cache.put(key, person);
-
-                            tr.commit();
-
-                            System.out.println("Increased salary for person: " + person);
-                        }
-
-                        return false;
-                    }
-                });
-
                 // Execute the query.
-                node.cache(PERSON_CACHE_NAME).query(scanQuery).getAll();
+                Iterator<Cache.Entry<PersonKey, Person>> iterator = node.cache(PERSON_CACHE_NAME).
+                    query(scanQuery).iterator();
+
+                while (iterator.hasNext()) {
+                    PersonKey key = iterator.next().getKey();
+
+                    // Performing update in a transaction.
+                    try (Transaction tr = node.transactions().txStart(
+                        TransactionConcurrency.PESSIMISTIC, TransactionIsolation.REPEATABLE_READ)) {
+
+                        // Locking the entry.
+                        Person person = cache.get(key);
+
+                        person.setSalary(person.getSalary() + person.getSalary() / 10);
+
+                        cache.put(key, person);
+
+                        tr.commit();
+
+                        System.out.println("Increased salary for person: " + person);
+                    }
+                }
             }
 
             return null;
         }
+
     }
 }
